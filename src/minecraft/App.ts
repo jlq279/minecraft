@@ -18,7 +18,8 @@ import { Chunk } from "./Chunk.js";
 export class MinecraftAnimation extends CanvasAnimation {
   private gui: GUI;
   
-  chunk : Chunk;
+  public chunk : Chunk;
+  public chunks: {[key: string]: Chunk} = {};
   
   /*  Cube Rendering */
   private cubeGeometry: Cube;
@@ -33,6 +34,8 @@ export class MinecraftAnimation extends CanvasAnimation {
   // Player's head position in world coordinate.
   // Player should extend two units down from this location, and 0.4 units radially.
   private playerPosition: Vec3;
+
+  public worldChunks: {[key: string]: Chunk};
   
   
   constructor(canvas: HTMLCanvasElement) {
@@ -47,7 +50,15 @@ export class MinecraftAnimation extends CanvasAnimation {
     this.playerPosition = this.gui.getCamera().pos();
     
     // Generate initial landscape
-    this.chunk = new Chunk(0.0, 0.0, 64);
+    this.chunks["1, 0"] = new Chunk(1.0, 0.0, 64, this.chunks, false);
+    this.chunks["1, 1"] = new Chunk(1.0, 1.0, 64, this.chunks, false);
+    this.chunks["0, 1"] = new Chunk(0.0, 1.0, 64, this.chunks, false);
+    this.chunks["-1, 1"] = new Chunk(-1.0, 1.0, 64, this.chunks, false);
+    this.chunks["-1, 0"] = new Chunk(-1.0, 0.0, 64, this.chunks, false);
+    this.chunks["-1, -1"] = new Chunk(-1.0, -1.0, 64, this.chunks, false);
+    this.chunks["0, -1"] = new Chunk(0.0, -1.0, 64, this.chunks, false);
+    this.chunks["1, -1"] = new Chunk(1.0, -1.0, 64, this.chunks, false);
+    this.chunks["0, 0"] = new Chunk(0.0, 0.0, 64, this.chunks, true);
     
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
@@ -161,8 +172,8 @@ export class MinecraftAnimation extends CanvasAnimation {
     gl.viewport(x, y, width, height);
 
     //TODO: Render multiple chunks around the player, using Perlin noise shaders
-    this.blankCubeRenderPass.updateAttributeBuffer("aOffset", this.chunk.cubePositions());
-    this.blankCubeRenderPass.drawInstanced(this.chunk.numCubes());    
+    this.blankCubeRenderPass.updateAttributeBuffer("aOffset", this.chunks["0, 0"].cubePositions());
+    this.blankCubeRenderPass.drawInstanced(this.chunks["0, 0"].numCubes());    
 
   }
 
