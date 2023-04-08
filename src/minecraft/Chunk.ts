@@ -8,22 +8,48 @@ export class Chunk {
     private x : number; // Center of the chunk
     private y : number;
     private size: number; // Number of cubes along each side of the chunk
-    
-    constructor(centerX : number, centerY : number, size: number) {
+    private children: {[key:string] : Chunk};
+
+    constructor(centerX : number, centerY : number, size: number, parent: boolean) {
         this.x = centerX;
         this.y = centerY;
         this.size = size;
         this.cubes = size*size;        
+        if(parent) this.cubes *= 9;
         this.generateCubes();
+        if(parent)
+        {
+            let cnt = 1;
+            for(let x = this.x -1; x <= this.x + 1; x++){
+                for(let y = this.y - 1; y <= this.y + 1; y++)
+                {
+                    if(x != this.x && y!= this.y)
+                    {
+                        let nkey: string = new String(x + ", " + y).toString();
+                        this.children[nkey] = new Chunk(x, y, this.size, false);
+                        let childCubes: Float32Array = this.children[nkey].cubePositions();
+                        for(let i1 = 0; i1 < childCubes[nkey].cubes; i1++)
+                        {
+                            this.cubePositionsF32[this.size * this.size * cnt + 4 * i1] = childCubes[4*i1];
+                            this.cubePositionsF32[this.size * this.size * cnt + 4 * i1 + 1] = childCubes[4*i1 + 1];
+                            this.cubePositionsF32[this.size * this.size * cnt + 4 * i1 + 2] = childCubes[4*i1 + 2];
+                            this.cubePositionsF32[this.size * this.size * cnt + 4 * i1 + 3] = childCubes[4*i1 + 3];
+                        }
+                        cnt++;
+
+                    }
+                }
+            }
+        }
     }
     
     
     private generateCubes() {
-        const topleftx = this.x - this.size / 2;
-        const toplefty = this.y - this.size / 2;
+        const topleftx = this.x * 64 - this.size / 2;
+        const toplefty = this.y * 64 - this.size / 2;
         
         //TODO: The real landscape-generation logic. The example code below shows you how to use the pseudorandom number generator to create a few cubes.
-        const seed = "42";
+        const seed = new String(this.x + ", " + this.y).toString();
         let rng = new Rand(seed);
         const noise = this.generateValueNoise(rng);
         const extraCubes: [number, number, number][] = [];
@@ -42,7 +68,6 @@ export class Chunk {
         }
 
         this.cubePositionsF32 = new Float32Array(4 * this.cubes);
-
         for(let i=0; i<this.size; i++)
         {
             for(let j=0; j<this.size; j++)

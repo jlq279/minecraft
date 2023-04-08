@@ -52,7 +52,7 @@ export class MinecraftAnimation extends CanvasAnimation {
     this.fallTime = 0;
     
     // Generate initial landscape
-    this.chunk = new Chunk(0.0, 0.0, 64);
+    this.chunk = new Chunk(0.0, 0.0, 64, true);
     
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
