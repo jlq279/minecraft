@@ -41,7 +41,6 @@ export class Chunk {
             }
         }
 
-        this.cubes++;
         this.cubePositionsF32 = new Float32Array(4 * this.cubes);
 
         for(let i=0; i<this.size; i++)

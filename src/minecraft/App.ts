@@ -33,6 +33,9 @@ export class MinecraftAnimation extends CanvasAnimation {
   // Player's head position in world coordinate.
   // Player should extend two units down from this location, and 0.4 units radially.
   private playerPosition: Vec3;
+  private fallPosition: number;
+  private fallTime: number;
+
   
   
   constructor(canvas: HTMLCanvasElement) {
@@ -45,6 +48,8 @@ export class MinecraftAnimation extends CanvasAnimation {
         
     this.gui = new GUI(this.canvas2d, this);
     this.playerPosition = this.gui.getCamera().pos();
+    this.fallPosition = 0;
+    this.fallTime = 0;
     
     // Generate initial landscape
     this.chunk = new Chunk(0.0, 0.0, 64);
@@ -131,6 +136,19 @@ export class MinecraftAnimation extends CanvasAnimation {
   }
 
 
+  // private canFall(): boolean {
+  //   const topleftx = -32.0;
+  //   const toplefty = -32.0;
+  //   const playerX = this.playerPosition.x;
+  //   const playerY = this.playerPosition.y - 2;
+  //   const playerZ = this.playerPosition.z;
+  //   const col = Math.floor(playerX - topleftx);
+  //   const row = Math.floor(playerZ - toplefty);
+  //   const idx = row * 64 + col;
+  //   const height = this.chunk.cubePositions()[4 * idx + 1];
+  //   return playerY > height;
+  // }
+
 
   /**
    * Draws a single frame
@@ -138,7 +156,33 @@ export class MinecraftAnimation extends CanvasAnimation {
    */
   public draw(): void {
     //TODO: Logic for a rudimentary walking simulator. Check for collisions and reject attempts to walk into a cube. Handle gravity, jumping, and loading of new chunks when necessary.
-    this.playerPosition.add(this.gui.walkDir());
+    const topleftx = -32.0;
+    const toplefty = -32.0;
+    const playerX = this.playerPosition.x;
+    const playerY = this.playerPosition.y - 2;
+    const playerZ = this.playerPosition.z;
+    const col = Math.floor(playerX - topleftx);
+    const row = Math.floor(playerZ - toplefty);
+    const idx = row * 64 + col;
+    const height = this.chunk.cubePositions()[4 * idx + 1];
+
+    const gravity = -9.8;
+    if (playerY > height) {
+      if (this.fallTime == 0) {
+        this.fallPosition = playerY;
+        this.fallTime = Date.now();
+      }
+      else {
+        const t = (Date.now() - this.fallTime)/1000.0;
+        this.playerPosition = new Vec3([this.playerPosition.x, Math.max(0.5 * gravity * t * t + this.fallPosition, height) + 2, this.playerPosition.z])
+      }
+      
+    }
+    else {
+      this.fallPosition = 0;
+      this.fallTime = 0;
+    }
+    this.playerPosition.add(new Vec3([this.gui.walkDir().x, 0, this.gui.walkDir().z]));
     
     this.gui.getCamera().setPos(this.playerPosition);
     
