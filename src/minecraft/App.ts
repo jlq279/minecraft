@@ -35,6 +35,11 @@ export class MinecraftAnimation extends CanvasAnimation {
   private playerPosition: Vec3;
   private fallPosition: number;
   private fallTime: number;
+  private playerCX: number;
+  private playerCY: number;
+  private loadedCX: number;
+  private loadedCY: number;
+
 
   
   
@@ -52,8 +57,12 @@ export class MinecraftAnimation extends CanvasAnimation {
     this.fallTime = 0;
     
     // Generate initial landscape
-    this.chunk = new Chunk(0.0, 0.0, 64, true);
-    
+    this.chunk = new Chunk(0.0, 0.0, 64, true, true);
+    this.playerCX = 0;
+    this.playerCY = 0;
+    this.loadedCX = 0;
+    this.loadedCY = 0;
+
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
     this.initBlankCube();
@@ -174,7 +183,7 @@ export class MinecraftAnimation extends CanvasAnimation {
       }
       else {
         const t = (Date.now() - this.fallTime)/1000.0;
-        this.playerPosition = new Vec3([this.playerPosition.x, Math.max(0.5 * gravity * t * t + this.fallPosition, height) + 2, this.playerPosition.z])
+        // this.playerPosition = new Vec3([this.playerPosition.x, Math.max(0.5 * gravity * t * t + this.fallPosition, height) + 2, this.playerPosition.z])
       }
       
     }
@@ -185,7 +194,24 @@ export class MinecraftAnimation extends CanvasAnimation {
     this.playerPosition.add(new Vec3([this.gui.walkDir().x, 0, this.gui.walkDir().z]));
     
     this.gui.getCamera().setPos(this.playerPosition);
-    
+    if(this.playerPosition.x < 0)
+    {
+      this.playerCX = Math.ceil((this.playerPosition.x - 32) / 64);
+    }
+    else this.playerCX = Math.floor((this.playerPosition.x + 32) / 64);
+    if(this.playerPosition.y < 0)
+    {
+      this.playerCY = Math.ceil((this.playerPosition.z - 32) / 64);
+    }
+    else this.playerCY = Math.floor((this.playerPosition.z + 32) / 64);
+
+    if(this.playerCX != this.loadedCX || this.playerCY != this.loadedCY)
+    {
+      this.loadedCX = this.playerCX;
+      this.loadedCY = this.playerCY;
+      this.chunk = new Chunk(this.loadedCX, this.loadedCY, 64, true, true);
+    }
+
     // Drawing
     const gl: WebGLRenderingContext = this.ctx;
     const bg: Vec4 = this.backgroundColor;
