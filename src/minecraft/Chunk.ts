@@ -106,7 +106,7 @@ export class Chunk {
         {
             for(let j=0; j<8; j++)
             {
-                const height = Math.floor(10.0 * rng.next());
+                const height = Math.floor(8.0 * rng.next());
                 const idx = 8 * i + j;
                 whiteNoise[idx] = height;
             }
@@ -123,54 +123,77 @@ export class Chunk {
         {
             for(let oldC=0; oldC<oldSize; oldC++)
             {
-                const value = noise[oldR * oldSize + oldC];
+                const value = noise[this.xyToLine(oldC, oldR, oldSize)];
                 const newR = 2*oldR;
                 const newC = 2*oldC;
-                const centerTopLeft = newR*newSize + newC;
-                const centerTopRight = newR*newSize + (newC+1);
-                const centerBottomLeft = (newR+1)*newSize + newC;
-                const centerBottomRight = (newR+1)*newSize + (newC+1);
-                upsampled[centerTopLeft] += 9.0/16.0 * value;
-                upsampled[centerTopRight] += 9.0/16.0 * value;
-                upsampled[centerBottomLeft] += 9.0/16.0 * value;
-                upsampled[centerBottomRight] += 9.0/16.0 * value;
-                if (newR - 1 >= 0) {
-                    if (newC - 1 >= 0) {
-                        const topLeft = (newR-1)*newSize + (newC-1);
-                        upsampled[topLeft] += 1.0/16.0 * value;
+                const maxR = Math.min(newR + 2, newSize - 1);
+                const minR = Math.max(newR - 1, 0);
+                const maxC = Math.min(newC + 2, newSize - 1);
+                const minC = Math.max(newC - 1, 0);
+
+                for(let a = minR; a <= maxR; a++)
+                {
+                    for(let b = minC; b <= maxC; b++)
+                    {
+                        let contribx = 1;
+                        let contriby = 1;
+                        const index = this.xyToLine(a, b, newSize);
+                        if(a - newR == 0 || a - newR == 1) contriby = 3;
+                        if(b - newC == 0 || b - newC == 1) contribx = 3;
+                        upsampled[index] += contribx * contriby * value / 16;
                     }
-                    if (newC + 2 < newSize) {
-                        const topRight = (newR-1)*newSize + (newC+2);
-                        upsampled[topRight] += 1.0/16.0 * value;
-                    }
-                    upsampled[(newR-1)*newSize + newC] += 3.0/16.0 * value;
-                    upsampled[(newR-1)*newSize + (newC+1)] += 3.0/16.0 * value;
                 }
-                if (newR + 2 < newSize) {
-                    if (newC - 1 >= 0) {
-                        const bottomLeft = (newR+2)*newSize + (newC-1);
-                        upsampled[bottomLeft] += 1.0/16.0 * value;
-                    }
-                    if (newC + 2 < newSize) {
-                        const bottomRight = (newR+2)*newSize + (newC+2);
-                        upsampled[bottomRight] += 1.0/16.0 * value;
-                    }
-                    upsampled[(newR+2)*newSize + newC] += 3.0/16.0 * value;
-                    upsampled[(newR+2)*newSize + (newC+1)] += 3.0/16.0 * value;
-                }
-                if (newC - 1 >= 0) {
-                    upsampled[newR*newSize + (newC-1)] += 3.0/16.0 * value;
-                    upsampled[(newR+1)*newSize + (newC-1)] += 3.0/16.0 * value;
-                }
-                if (newC + 2 < newSize) {
-                    upsampled[newR*newSize + (newC+2)] += 3.0/16.0 * value;
-                    upsampled[(newR+1)*newSize + (newC+2)] += 3.0/16.0 * value;
-                }
+                // const centerTopLeft = newR*newSize + newC;
+                // const centerTopRight = newR*newSize + (newC+1);
+                // const centerBottomLeft = (newR+1)*newSize + newC;
+                // const centerBottomRight = (newR+1)*newSize + (newC+1);
+                // upsampled[centerTopLeft] += 9.0/16.0 * value;
+                // upsampled[centerTopRight] += 9.0/16.0 * value;
+                // upsampled[centerBottomLeft] += 9.0/16.0 * value;
+                // upsampled[centerBottomRight] += 9.0/16.0 * value;
+                // if (newR - 1 >= 0) {
+                //     if (newC - 1 >= 0) {
+                //         const topLeft = (newR-1)*newSize + (newC-1);
+                //         upsampled[topLeft] += 1.0/16.0 * value;
+                //     }
+                //     if (newC + 2 < newSize) {
+                //         const topRight = (newR-1)*newSize + (newC+2);
+                //         upsampled[topRight] += 1.0/16.0 * value;
+                //     }
+                //     upsampled[(newR-1)*newSize + newC] += 3.0/16.0 * value;
+                //     upsampled[(newR-1)*newSize + (newC+1)] += 3.0/16.0 * value;
+                // }
+                // if (newR + 2 < newSize) {
+                //     if (newC - 1 >= 0) {
+                //         const bottomLeft = (newR+2)*newSize + (newC-1);
+                //         upsampled[bottomLeft] += 1.0/16.0 * value;
+                //     }
+                //     if (newC + 2 < newSize) {
+                //         const bottomRight = (newR+2)*newSize + (newC+2);
+                //         upsampled[bottomRight] += 1.0/16.0 * value;
+                //     }
+                //     upsampled[(newR+2)*newSize + newC] += 3.0/16.0 * value;
+                //     upsampled[(newR+2)*newSize + (newC+1)] += 3.0/16.0 * value;
+                // }
+                // if (newC - 1 >= 0) {
+                //     upsampled[newR*newSize + (newC-1)] += 3.0/16.0 * value;
+                //     upsampled[(newR+1)*newSize + (newC-1)] += 3.0/16.0 * value;
+                // }
+                // if (newC + 2 < newSize) {
+                //     upsampled[newR*newSize + (newC+2)] += 3.0/16.0 * value;
+                //     upsampled[(newR+1)*newSize + (newC+2)] += 3.0/16.0 * value;
+                // }
             }
         }
         return upsampled;
     }
     
+    public xyToLine(x: number, y: number, size: number): number 
+    {
+        return x + y * size;
+    }
+
+
     public cubePositions(): Float32Array {
         return this.cubePositionsF32;
     }
