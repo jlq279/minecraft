@@ -26,7 +26,7 @@ export class Chunk {
         this.y = centerY;
         this.size = size;
         this.eCubes = 0;
-        this.cubes = size*size*9;
+        this.cubes = size*size;
         this.oGnoise = new Float32Array(64);
         if(parent)  
         {
@@ -43,7 +43,7 @@ export class Chunk {
                     {
                         for(let y2 = 0; y2 < 8; y2++)
                         {
-                            let sindex = this.xyToLine(8*(x+1) + x2, 8*(y+1) + y2, 24);
+                            let sindex = this.xyToLine(8*(x+1 - this.x) + x2, 8*(y+1 - this.y) + y2, 24);
                             let index = this.xyToLine(x2, y2, 8);
                             this.superOGnoise[sindex] = this.children[nkey].oGnoise[index]; 
                         }
@@ -57,6 +57,7 @@ export class Chunk {
         else 
         {
             const seed = new String(this.x + ", " + this.y).toString();
+            //console.log(seed);
             let rng = new Rand(seed);
             // const noise = this.generateValueNoise(rng);
             this.generateWhiteNoise(rng);
@@ -93,34 +94,34 @@ export class Chunk {
         //}
     }
     
-    private generateExtraCubes(){
-        const topleftx = this.x * this.size - this.size / 2;
-        const toplefty = this.y * this.size - this.size / 2;
-        const extraCubes: [number, number, number][] = [];
-        for(let i=0; i<this.size; i++) {
-            for(let j=0; j<this.size; j++)
-            {
-                const height = this.valueNoise[i*this.size + j];
-                const heightDifference = this.getMaxHeightDifference(this.valueNoise, i, j);
-                if (heightDifference > 1) {
-                    this.cubes += heightDifference - 1;
-                    for (let k = 1; k < heightDifference; k++) {
-                        extraCubes.push([i, j, height - k])
-                    }
-                }
-            }
-        }
-        for (let idx = 0; idx < 4 * this.eCubes; idx+=4) {
-            const extraCube = extraCubes.pop() || [0, 0, 0];
-            const i = extraCube[0];
-            const j = extraCube[1];
-            const height = extraCube[2];
-            this.cubePositionsF32[idx + 0] = topleftx + j;
-            this.cubePositionsF32[idx + 1] = height;
-            this.cubePositionsF32[idx + 2] = toplefty + i;
-            this.cubePositionsF32[idx + 3] = 0;
-        }
-    }
+    // private generateExtraCubes(){
+    //     const topleftx = this.x * this.size - this.size / 2;
+    //     const toplefty = this.y * this.size - this.size / 2;
+    //     const extraCubes: [number, number, number][] = [];
+    //     for(let i=0; i<this.size; i++) {
+    //         for(let j=0; j<this.size; j++)
+    //         {
+    //             const height = this.valueNoise[i*this.size + j];
+    //             const heightDifference = this.getMaxHeightDifference(this.valueNoise, i, j);
+    //             if (heightDifference > 1) {
+    //                 this.cubes += heightDifference - 1;
+    //                 for (let k = 1; k < heightDifference; k++) {
+    //                     extraCubes.push([i, j, height - k])
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     for (let idx = 0; idx < 4 * this.eCubes; idx+=4) {
+    //         const extraCube = extraCubes.pop() || [0, 0, 0];
+    //         const i = extraCube[0];
+    //         const j = extraCube[1];
+    //         const height = extraCube[2];
+    //         this.cubePositionsF32[idx + 0] = topleftx + j;
+    //         this.cubePositionsF32[idx + 1] = height;
+    //         this.cubePositionsF32[idx + 2] = toplefty + i;
+    //         this.cubePositionsF32[idx + 3] = 0;
+    //     }
+    // }
     
     
     private generateCubes() {
@@ -204,8 +205,12 @@ export class Chunk {
             for (let j = 0; j < 192; j++) {
                 valueNoise[i*192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)]);
                 this.valueNoise[i * 192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)])
+                // valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);
+                // this.valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);;
+
             }
         }
+
         return valueNoise;
     }
 
@@ -215,7 +220,7 @@ export class Chunk {
         {
             for(let j=0; j<8; j++)
             {
-                const height = Math.floor(10.0 * rng.next());
+                const height = Math.floor(50.0 * rng.next());
                 const idx = 8 * i + j;
                 whiteNoise[idx] = height;
                 this.oGnoise[idx] = height;
@@ -241,58 +246,58 @@ export class Chunk {
                 const maxC = Math.min(newC + 2, newSize - 1);
                 const minC = Math.max(newC - 1, 0);
 
-                for(let a = minR; a <= maxR; a++)
-                {
-                    for(let b = minC; b <= maxC; b++)
-                    {
-                        let contribx = 1;
-                        let contriby = 1;
-                        const index = this.xyToLine(a, b, newSize);
-                        if(a - newR == 0 || a - newR == 1) contriby = 3;
-                        if(b - newC == 0 || b - newC == 1) contribx = 3;
-                        upsampled[index] += contribx * contriby * value / 16;
+                // for(let a = minR; a <= maxR; a++)
+                // {
+                //     for(let b = minC; b <= maxC; b++)
+                //     {
+                //         let contribx = 1;
+                //         let contriby = 1;
+                //         const index = this.xyToLine(a, b, newSize);
+                //         if(a - newR == 0 || a - newR == 1) contriby = 3;
+                //         if(b - newC == 0 || b - newC == 1) contribx = 3;
+                //         upsampled[index] += contribx * contriby * value / 16;
+                //     }
+                // }
+                const centerTopLeft = newR*newSize + newC;
+                const centerTopRight = newR*newSize + (newC+1);
+                const centerBottomLeft = (newR+1)*newSize + newC;
+                const centerBottomRight = (newR+1)*newSize + (newC+1);
+                upsampled[centerTopLeft] += 9.0/16.0 * value;
+                upsampled[centerTopRight] += 9.0/16.0 * value;
+                upsampled[centerBottomLeft] += 9.0/16.0 * value;
+                upsampled[centerBottomRight] += 9.0/16.0 * value;
+                if (newR - 1 >= 0) {
+                    if (newC - 1 >= 0) {
+                        const topLeft = (newR-1)*newSize + (newC-1);
+                        upsampled[topLeft] += 1.0/16.0 * value;
                     }
+                    if (newC + 2 < newSize) {
+                        const topRight = (newR-1)*newSize + (newC+2);
+                        upsampled[topRight] += 1.0/16.0 * value;
+                    }
+                    upsampled[(newR-1)*newSize + newC] += 3.0/16.0 * value;
+                    upsampled[(newR-1)*newSize + (newC+1)] += 3.0/16.0 * value;
                 }
-                // const centerTopLeft = newR*newSize + newC;
-                // const centerTopRight = newR*newSize + (newC+1);
-                // const centerBottomLeft = (newR+1)*newSize + newC;
-                // const centerBottomRight = (newR+1)*newSize + (newC+1);
-                // upsampled[centerTopLeft] += 9.0/16.0 * value;
-                // upsampled[centerTopRight] += 9.0/16.0 * value;
-                // upsampled[centerBottomLeft] += 9.0/16.0 * value;
-                // upsampled[centerBottomRight] += 9.0/16.0 * value;
-                // if (newR - 1 >= 0) {
-                //     if (newC - 1 >= 0) {
-                //         const topLeft = (newR-1)*newSize + (newC-1);
-                //         upsampled[topLeft] += 1.0/16.0 * value;
-                //     }
-                //     if (newC + 2 < newSize) {
-                //         const topRight = (newR-1)*newSize + (newC+2);
-                //         upsampled[topRight] += 1.0/16.0 * value;
-                //     }
-                //     upsampled[(newR-1)*newSize + newC] += 3.0/16.0 * value;
-                //     upsampled[(newR-1)*newSize + (newC+1)] += 3.0/16.0 * value;
-                // }
-                // if (newR + 2 < newSize) {
-                //     if (newC - 1 >= 0) {
-                //         const bottomLeft = (newR+2)*newSize + (newC-1);
-                //         upsampled[bottomLeft] += 1.0/16.0 * value;
-                //     }
-                //     if (newC + 2 < newSize) {
-                //         const bottomRight = (newR+2)*newSize + (newC+2);
-                //         upsampled[bottomRight] += 1.0/16.0 * value;
-                //     }
-                //     upsampled[(newR+2)*newSize + newC] += 3.0/16.0 * value;
-                //     upsampled[(newR+2)*newSize + (newC+1)] += 3.0/16.0 * value;
-                // }
-                // if (newC - 1 >= 0) {
-                //     upsampled[newR*newSize + (newC-1)] += 3.0/16.0 * value;
-                //     upsampled[(newR+1)*newSize + (newC-1)] += 3.0/16.0 * value;
-                // }
-                // if (newC + 2 < newSize) {
-                //     upsampled[newR*newSize + (newC+2)] += 3.0/16.0 * value;
-                //     upsampled[(newR+1)*newSize + (newC+2)] += 3.0/16.0 * value;
-                // }
+                if (newR + 2 < newSize) {
+                    if (newC - 1 >= 0) {
+                        const bottomLeft = (newR+2)*newSize + (newC-1);
+                        upsampled[bottomLeft] += 1.0/16.0 * value;
+                    }
+                    if (newC + 2 < newSize) {
+                        const bottomRight = (newR+2)*newSize + (newC+2);
+                        upsampled[bottomRight] += 1.0/16.0 * value;
+                    }
+                    upsampled[(newR+2)*newSize + newC] += 3.0/16.0 * value;
+                    upsampled[(newR+2)*newSize + (newC+1)] += 3.0/16.0 * value;
+                }
+                if (newC - 1 >= 0) {
+                    upsampled[newR*newSize + (newC-1)] += 3.0/16.0 * value;
+                    upsampled[(newR+1)*newSize + (newC-1)] += 3.0/16.0 * value;
+                }
+                if (newC + 2 < newSize) {
+                    upsampled[newR*newSize + (newC+2)] += 3.0/16.0 * value;
+                    upsampled[(newR+1)*newSize + (newC+2)] += 3.0/16.0 * value;
+                }
             }
         }
         return upsampled;

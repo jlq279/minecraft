@@ -199,7 +199,7 @@ export class MinecraftAnimation extends CanvasAnimation {
       this.playerCX = Math.ceil((this.playerPosition.x - 32) / 64);
     }
     else this.playerCX = Math.floor((this.playerPosition.x + 32) / 64);
-    if(this.playerPosition.y < 0)
+    if(this.playerPosition.z < 0)
     {
       this.playerCY = Math.ceil((this.playerPosition.z - 32) / 64);
     }
@@ -210,6 +210,10 @@ export class MinecraftAnimation extends CanvasAnimation {
       this.loadedCX = this.playerCX;
       this.loadedCY = this.playerCY;
       this.chunk = new Chunk(this.loadedCX, this.loadedCY, 64, true, true);
+      console.log("x " + this.playerCX);
+      console.log("y " + this.playerCY);
+      console.log("px " + this.playerPosition.x);
+      console.log("py " + this.playerPosition.z);
     }
 
     // Drawing
