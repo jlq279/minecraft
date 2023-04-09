@@ -33,12 +33,13 @@ export class MinecraftAnimation extends CanvasAnimation {
   // Player's head position in world coordinate.
   // Player should extend two units down from this location, and 0.4 units radially.
   private playerPosition: Vec3;
-  private fallPosition: number;
-  private fallTime: number;
-  private playerVelocity: number;
-  private walkDirection: Vec3;
-  private walkPosition: Vec3;
-  private walkTime: number;
+  private verticalVelocity: number;
+  private prevT: number;
+  private playerCX: number;
+  private playerCY: number;
+  private loadedCX: number;
+  private loadedCY: number;
+
 
   
   
@@ -52,16 +53,17 @@ export class MinecraftAnimation extends CanvasAnimation {
         
     this.gui = new GUI(this.canvas2d, this);
     this.playerPosition = this.gui.getCamera().pos();
-    this.fallPosition = 0;
-    this.fallTime = 0;
-    this.playerVelocity = 0;
-    this.walkDirection = new Vec3();
-    this.walkPosition = this.playerPosition;
-    this.walkTime = 0;
-    
+
+    this.verticalVelocity = 0;
+    this.prevT = Date.now();
+
     // Generate initial landscape
-    this.chunk = new Chunk(0.0, 0.0, 64);
-    
+    this.chunk = new Chunk(0.0, 0.0, 64, true, true);
+    this.playerCX = 0;
+    this.playerCY = 0;
+    this.loadedCX = 0;
+    this.loadedCY = 0;
+
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
     this.initBlankCube();
@@ -144,117 +146,91 @@ export class MinecraftAnimation extends CanvasAnimation {
   }
 
   private canFall(playerY: number, height: number): boolean {
-    return playerY > height || this.playerVelocity != 0;
+    return playerY > height || this.verticalVelocity != 0;
   }
 
   private fall(playerY: number, height: number) {
     // TODO: more accurate check for which block is under the player (make sure it's supporting the 0.4r cylinder)
     const gravity = -9.8;
-    if (this.fallTime == 0) {
-      this.fallPosition = playerY;
-      this.fallTime = Date.now();
-    }
-    else {
-      const t = (Date.now() - this.fallTime)/1000.0;
-      const newHeight = Math.max(0.5 * gravity * t * t + this.playerVelocity * t + this.fallPosition, height) + 2;
-      this.playerPosition.y = newHeight;
-      if (newHeight == height + 2) {
-        this.cancelFall();
-      }
+    const t = (Date.now() - this.prevT)/1000.0;
+    this.verticalVelocity += gravity * t;
+    this.playerPosition.y = Math.max(playerY + this.verticalVelocity * t, height) + 2;
+    if (this.playerPosition.y == height + 2) {
+      this.cancelFall();
     }
   }
 
   private cancelFall() {
-    this.fallPosition = 0;
-    this.fallTime = 0;
-    this.playerVelocity = 0;
+    this.verticalVelocity = 0;
   }
 
   private walk(row: number, col: number) {
+    const playerX = this.playerPosition.x;
     const playerY = this.playerPosition.y - 2;
+    const playerZ = this.playerPosition.z;
     const walkX = this.gui.walkDir().x;
     const walkZ = this.gui.walkDir().z;
-    const t = (Date.now() - this.walkTime)/1000.0;
+    let diffX = 0;
+    let diffZ = 0;
     if (walkX > 0) {
-      if (col + 1 < 64) {
-        const right = row * 64 + (col + 1);
-        const rightX = this.chunk.cubePositions()[4 * right + 0];
-        const rightHeight = this.chunk.cubePositions()[4 * right + 1];
-        if (playerY >= rightHeight) {
-          this.playerPosition.x = Math.min(this.walkPosition.x + walkX * t, 31.1);
-        }
-        else {
-          this.playerPosition.x = Math.min(this.walkPosition.x + walkX * t, rightX - 0.9);
-        }
+      const right = row * 192 + (col + 1);
+      const rightX = this.chunk.cubePositions()[4 * right + 0];
+      const rightHeight = this.chunk.cubePositions()[4 * right + 1];
+      if (playerY >= rightHeight) {
+        diffX = walkX;
       }
       else {
-        this.playerPosition.x = Math.min(this.walkPosition.x + walkX * t, 31.1);
+        diffX = Math.min(walkX, Math.max((rightX - 0.9) - playerX, 0));
       }
     }
     else if (walkX < 0) {
-      if (col - 1 >= 0) {
-        const left = row * 64 + (col - 1);
-        const leftX = this.chunk.cubePositions()[4 * left + 0];
-        const leftHeight = this.chunk.cubePositions()[4 * left + 1];
-        if (playerY >= leftHeight) {
-          this.playerPosition.x = Math.max(this.walkPosition.x + walkX * t, -32.1);
-        }
-        else {
-          this.playerPosition.x = Math.max(this.walkPosition.x + walkX * t, leftX + 0.9);
-        }
+      const left = row * 192 + (col - 1);
+      const leftX = this.chunk.cubePositions()[4 * left + 0];
+      const leftHeight = this.chunk.cubePositions()[4 * left + 1];
+      if (playerY >= leftHeight) {
+        diffX = walkX;
       }
       else {
-        this.playerPosition.x = Math.max(this.walkPosition.x + walkX * t, -32.1);
+        diffX = Math.max(walkX, Math.min((leftX + 0.9) - playerX, 0));
       }
     }
     if (walkZ > 0) {
-      if (row + 1 < 64) {
-        const bottom = (row + 1) * 64 + col;
-        const bottomZ = this.chunk.cubePositions()[4 * bottom + 2];
-        const bottomHeight = this.chunk.cubePositions()[4 * bottom + 1];
-        if (playerY >= bottomHeight) {
-          this.playerPosition.z = Math.min(this.walkPosition.z + walkZ * t, 31.1);
-        }
-        else {
-          this.playerPosition.z = Math.min(this.walkPosition.z + walkZ * t, bottomZ - 0.9);
-        }
+      const bottom = (row + 1) * 192 + col;
+      const bottomZ = this.chunk.cubePositions()[4 * bottom + 2];
+      const bottomHeight = this.chunk.cubePositions()[4 * bottom + 1];
+      if (playerY >= bottomHeight) {
+        diffZ = walkZ;
       }
       else {
-        this.playerPosition.z = Math.min(this.walkPosition.z + walkZ * t, 31.1);
+        diffZ = Math.min(walkZ, Math.max((bottomZ - 0.9) - playerZ, 0));
       }
     }
     else if (walkZ < 0) {
-      if (row - 1 >= 0) {
-        const top = (row - 1) * 64 + col;
-        const topZ = this.chunk.cubePositions()[4 * top + 2];
-        const topHeight = this.chunk.cubePositions()[4 * top + 1];
-        if (playerY >= topHeight) {
-          this.playerPosition.z = Math.max(this.walkPosition.z + walkZ * t, -32.1);
-        }
-        else {
-          this.playerPosition.z = Math.max(this.walkPosition.z + walkZ * t, topZ + 0.9);
-        }
+      const top = (row - 1) * 192 + col;
+      const topZ = this.chunk.cubePositions()[4 * top + 2];
+      const topHeight = this.chunk.cubePositions()[4 * top + 1];
+      if (playerY >= topHeight) {
+        diffZ = walkZ;
       }
       else {
-        this.playerPosition.z = Math.max(this.walkPosition.z + walkZ * t, -32.1);
+        diffZ = Math.max(walkZ, Math.min((topZ + 0.9) - playerZ, 0));
       }
+    }
+    if (!((walkX != 0 && diffX == 0) || (walkZ != 0 && diffZ == 0))) {
+      this.playerPosition.x += diffX;
+      this.playerPosition.z += diffZ;
     }
   }
 
   private move() {
-    if (!this.walkDirection.equals(new Vec3([this.gui.walkDir().x, 0, this.gui.walkDir().z]))) {
-      this.walkDirection = new Vec3([this.gui.walkDir().x, 0, this.gui.walkDir().z]);
-      this.walkTime = Date.now();
-      this.walkPosition = this.playerPosition;
-    }
-    const topleftx = -32.0;
-    const toplefty = -32.0;
+    const topleftx = this.chunk.topleftx;
+    const toplefty = this.chunk.toplefty;
     const playerX = this.playerPosition.x;
     const playerY = this.playerPosition.y - 2;
     const playerZ = this.playerPosition.z;
     const col = Math.round(playerX - topleftx);
     const row = Math.round(playerZ - toplefty);
-    const idx = row * 64 + col;
+    const idx = row * 192 + col;
     const height = this.chunk.cubePositions()[4 * idx + 1];
     if (this.canFall(playerY, height)) {
       this.fall(playerY, height);
@@ -270,7 +246,28 @@ export class MinecraftAnimation extends CanvasAnimation {
     //TODO: Logic for a rudimentary walking simulator. Check for collisions and reject attempts to walk into a cube. Handle gravity, jumping, and loading of new chunks when necessary.
     this.move();
     this.gui.getCamera().setPos(this.playerPosition);
-    
+    if(this.playerPosition.x < 0)
+    {
+      this.playerCX = Math.ceil((this.playerPosition.x - 32) / 64);
+    }
+    else this.playerCX = Math.floor((this.playerPosition.x + 32) / 64);
+    if(this.playerPosition.z < 0)
+    {
+      this.playerCY = Math.ceil((this.playerPosition.z - 32) / 64);
+    }
+    else this.playerCY = Math.floor((this.playerPosition.z + 32) / 64);
+
+    if(this.playerCX != this.loadedCX || this.playerCY != this.loadedCY)
+    {
+      this.loadedCX = this.playerCX;
+      this.loadedCY = this.playerCY;
+      this.chunk = new Chunk(this.loadedCX, this.loadedCY, 64, true, true);
+      // console.log("x " + this.playerCX);
+      // console.log("y " + this.playerCY);
+      // console.log("px " + this.playerPosition.x);
+      // console.log("py " + this.playerPosition.z);
+    }
+
     // Drawing
     const gl: WebGLRenderingContext = this.ctx;
     const bg: Vec4 = this.backgroundColor;
@@ -282,7 +279,8 @@ export class MinecraftAnimation extends CanvasAnimation {
     gl.cullFace(gl.BACK);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // null is the default frame buffer
-    this.drawScene(0, 0, 1280, 960);        
+    this.drawScene(0, 0, 1280, 960);      
+    this.prevT = Date.now();
   }
 
   private drawScene(x: number, y: number, width: number, height: number): void {
@@ -302,10 +300,8 @@ export class MinecraftAnimation extends CanvasAnimation {
   
   public jump() {
       //TODO: If the player is not already in the lair, launch them upwards at 10 units/sec.
-      if (this.playerVelocity == 0) {
-        this.fallTime = Date.now();
-        this.fallPosition = this.playerPosition.y - 2;
-        this.playerVelocity = 10;
+      if (this.verticalVelocity == 0) {
+        this.verticalVelocity = 10;
       }
   }
 }
