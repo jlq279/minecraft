@@ -180,10 +180,14 @@ export const blankCubeFSText = `
     void main() {
         
         
-        
-        float noise = perlin(uv.x, uv.y, seed, 4.0);
-        float val = 0.5 * noise + 0.3;
-        float vala = 0.1 * noise + 0.1;
+        float noise = perlin(uv.x, uv.y, seed, 2.0);
+        float noise2 = perlin(uv.x, uv.y, seed, 4.0);
+        float noise3 = perlin(uv.x, uv.y, seed, 8.0);
+        float noise4 = perlin(uv.x, uv.y, seed, 16.0);
+        float noise5 = perlin(uv.x, uv.y, seed, 32.0);
+        float finnoise = 0.5 * noise + 0.25 * noise2 + 0.125 * noise3 + 0.0625 * noise4;
+        float val = finnoise;
+        float vala = 0.1 * finnoise + 0.1;
 
 
 
