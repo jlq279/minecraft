@@ -154,7 +154,7 @@ export class MinecraftAnimation extends CanvasAnimation {
   private fall(cubeIndex: number) {
     // TODO: more accurate check for which block is under the player (make sure it's supporting the 0.4r cylinder)
     const gravity = -9.8;
-    const t = (Date.now() - this.prevT)/100.0;
+    const t = (Date.now() - this.prevT)/1000.0;
     this.verticalVelocity += gravity * t;
     const playerY = this.playerPosition.y - 2;
     this.playerPosition.y = Math.max(playerY + this.verticalVelocity * t, this.chunk.cubePositions()[cubeIndex + 1] + 0.5) + 2;
@@ -473,7 +473,6 @@ export class MinecraftAnimation extends CanvasAnimation {
       const newY = y + offset[1];
       const newZ = z + offset[2];
       const idx = this.loadedCY * 3 + this.loadedCX;
-      const key = newX + "," + newZ;
       if (isNullOrUndefined(this.added[idx])) {
         this.added[idx] = [];
       }
@@ -481,6 +480,9 @@ export class MinecraftAnimation extends CanvasAnimation {
       this.chunk.addCube(newX, newY, newZ);
       this.chunk.generateCubePositions();
 
+      if (this.playerPosition.y - 2 < newY + 0.5) {
+        this.playerPosition.y++;
+      }
     }
   }
   
