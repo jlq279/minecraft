@@ -195,6 +195,10 @@ export class GUI implements IGUI {
         this.animation.mine(this.mouseRay);
         break;
       }
+      case "KeyZ": {
+        this.animation.placeBlock(this.mouseRay);
+        break;
+      }
       case "Space": {
         this.animation.jump();
         break;

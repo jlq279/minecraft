@@ -226,7 +226,7 @@ export class MinecraftAnimation extends CanvasAnimation {
     const playerZ = this.playerPosition.z;
     const cubeX = Math.round(playerX);
     const cubeZ = Math.round(playerZ);
-    let cubeIndex: number = -Infinity;
+    let cubeIndex: number = NaN;
     let maxHeight = -Infinity;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
@@ -235,7 +235,6 @@ export class MinecraftAnimation extends CanvasAnimation {
         if (this.on(newX, newZ)) {
           const key = newX + "," + newZ;
           const heights = this.chunk.cubeMap[key];
-          console.log("key " + key);
           heights.forEach((height) => {
             if (height + 0.5 <= playerY && height > maxHeight) {
               maxHeight = height;
@@ -250,8 +249,8 @@ export class MinecraftAnimation extends CanvasAnimation {
 
   private move() {
     const cubeIndex = this.findSupportingCube();
-    if (cubeIndex == -Infinity) {
-      console.log(cubeIndex);
+    if (Number.isNaN(cubeIndex)) {
+      console.log("cannot find supporting cube");
     }
     else {
       if (this.canFall(cubeIndex)) {
@@ -302,6 +301,8 @@ export class MinecraftAnimation extends CanvasAnimation {
           this.chunk.addCube(cube[0], cube[1], cube[2]);
         });
       }
+      this.chunk.generateCubePositions();
+
     }
 
     // Drawing
@@ -341,7 +342,7 @@ export class MinecraftAnimation extends CanvasAnimation {
       let vd = rayDir.at(currentaxis);
       // if the ray is parallel to the face's plane (=0.0)
       if (vd == 0.0)
-      continue;
+        continue;
       const v1 = boundingBox[0][currentaxis] - pos.at(currentaxis);
       const v2 = boundingBox[1][currentaxis] - pos.at(currentaxis);
       // two slab intersections
@@ -357,16 +358,16 @@ export class MinecraftAnimation extends CanvasAnimation {
       if (t2 < tMax)
       tMax = t2;
       if (tMin > tMax)
-      return Infinity; // box is missed
+        return Infinity; // box is missed
       if (tMax < 1e-7)
-      return Infinity; // box is behind ray
+        return Infinity; // box is behind ray
     }
     return tMin;
   }
   
-  private intersectedCube(rayDir: Vec3): number {
+  private intersectedCube(rayDir: Vec3): [number, number] {
     let minT = Infinity;
-    let intersectedCubeIndex = -1;
+    let intersectedCubeIndex = NaN;
     this.chunk.cubePositions().forEach((_, index) => {
       if (index % 4 == 0) {
         const boundingBox: [[number, number, number], [number, number, number]] = [[this.chunk.cubePositions()[index + 0] - 0.5, this.chunk.cubePositions()[index + 1] - 0.5, this.chunk.cubePositions()[index + 2] - 0.5], [this.chunk.cubePositions()[index + 0] + 0.5, this.chunk.cubePositions()[index + 1] + 0.5, this.chunk.cubePositions()[index + 2] + 0.5]];
@@ -377,53 +378,109 @@ export class MinecraftAnimation extends CanvasAnimation {
         }
       }
     });
-    console.log("intersected " + this.chunk.cubePositions()[intersectedCubeIndex + 0], this.chunk.cubePositions()[intersectedCubeIndex + 1], this.chunk.cubePositions()[intersectedCubeIndex + 2])
-    return intersectedCubeIndex;
+    return [intersectedCubeIndex, minT];
   }
 
   public mine(rayDir: Vec3) {
-    let intersectedCubeIndex = this.intersectedCube(rayDir);
-    const x = this.chunk.cubePositions()[intersectedCubeIndex + 0];
-    const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
-    const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
-    const idx = this.loadedCY * 3 + this.loadedCX;
-    const key = x + "," + z;
-    if (isNullOrUndefined(this.removed[idx])) {
-      this.removed[idx] = [];
+    const intersectedCubeIndex = this.intersectedCube(rayDir)[0];
+    if (!Number.isNaN(intersectedCubeIndex)) {
+      const x = this.chunk.cubePositions()[intersectedCubeIndex + 0];
+      const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
+      const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
+      const idx = this.loadedCY * 3 + this.loadedCX;
+      if (y > 0) {
+        if (isNullOrUndefined(this.removed[idx])) {
+          this.removed[idx] = [];
+        }
+        this.removed[idx].push([x, y, z]);
+        this.chunk.removeCube(x, y, z);
+        this.chunk.generateCubePositions();
+      }
     }
-    this.removed[idx].push([x, y, z]);
-    this.chunk.removeCube(x, y, z);
-    if (this.chunk.cubeMap[key].length == 0 || !this.chunk.cubeMap[key].find((height) => height < y)) {
+    // let attached = false;
+    // const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    // for (let i = 0; i < offset.length; i++) {
+    //   const neighborX = x + offset[i][0];
+    //   const neighborZ = z + offset[i][1];
+    //   const neighborKey = neighborX + "," + neighborZ;
+    //   const neighbors = this.chunk.cubeMap[neighborKey];
+      // let maxHeight = -Infinity;
+      // let minHeight = Infinity;
+      // console.log("y " + y)
+      // console.log(neighbors)
+      // neighbors.forEach((height) => {
+      //   minHeight = Math.min(minHeight, height);
+      // });
+      // neighbors.forEach((height) => {
+      //   if (height <= y + 1) {
+      //     maxHeight = Math.max(maxHeight, height);
+      //   }
+      // });
+      // const hasAdjacent = neighbors.find((neighborY) => neighborY == y);
+      // if (hasAdjacent) {
+      //   attached = true;
+        // console.log("direction " + offset[i])
+        // console.log("maxHeight " + maxHeight + ", minHeight " + minHeight);
+        // console.log("y " + y)
+      // }
+      // if ((maxHeight > y || minHeight > y) && !hasAdjacent && !this.removed[idx].find((cube) => cube[0] == neighborX && cube[1] == y && cube[2] == neighborZ)) {
+      //   console.log("add " + neighborX + "," + y + "," + neighborZ)
+      //   if (isNullOrUndefined(this.added[idx])) {
+      //     this.added[idx] = [];
+      //   }
+      //   this.added[idx].push([neighborX, y, neighborZ]);
+      //   this.chunk.addCube(neighborX, y, neighborZ);
+      // }
+    // }
+    // if (attached && (this.chunk.cubeMap[key].length == 0 || !this.chunk.cubeMap[key].find((height) => height < y))) {
+    //   if (isNullOrUndefined(this.added[idx])) {
+    //     this.added[idx] = [];
+    //   }
+    //   this.added[idx].push([x, y - 1, z]);
+    //   this.chunk.addCube(x, y - 1, z);
+    // }
+  }
+
+  public placeBlock(rayDir: Vec3) {
+    const cubeIntersection = this.intersectedCube(rayDir)
+    const intersectedCubeIndex = cubeIntersection[0];
+    if (!Number.isNaN(intersectedCubeIndex)) {
+      const x = this.chunk.cubePositions()[intersectedCubeIndex + 0];
+      const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
+      const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
+      const minT = cubeIntersection[1];
+      const intersectionPoint = this.playerPosition.copy().add(rayDir.copy().scale(minT));
+      let offset: [number, number, number] = [0, 0, 0];
+      if (Math.abs(intersectionPoint.x - (x - 0.5)) < 1e-7) {
+        offset = [-1, 0, 0];
+      }
+      else if (Math.abs(intersectionPoint.x - (x + 0.5)) < 1e-7) {
+        offset = [1, 0, 0];
+      }
+      else if (Math.abs(intersectionPoint.y - (y - 0.5)) < 1e-7) {
+        offset = [0, -1, 0];
+      }
+      else if (Math.abs(intersectionPoint.y - (y + 0.5)) < 1e-7) {
+        offset = [0, 1, 0];
+      }
+      else if (Math.abs(intersectionPoint.z - (z - 0.5)) < 1e-7) {
+        offset = [0, 0, -1];
+      }
+      else if (Math.abs(intersectionPoint.z - (z + 0.5)) < 1e-7) {
+        offset = [0, 0, 1];
+      }
+      const newX = x + offset[0];
+      const newY = y + offset[1];
+      const newZ = z + offset[2];
+      const idx = this.loadedCY * 3 + this.loadedCX;
+      const key = newX + "," + newZ;
       if (isNullOrUndefined(this.added[idx])) {
         this.added[idx] = [];
       }
-      this.added[idx].push([x, y - 1, z]);
-      this.chunk.addCube(x, y - 1, z);
-    }
-    const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    for (let i = 0; i < offset.length; i++) {
-      const neighborX = x + offset[i][0];
-      const neighborZ = z + offset[i][1];
-      const neighborKey = neighborX + "," + neighborZ;
-      const neighbors = this.chunk.cubeMap[neighborKey];
-      let maxHeight = -Infinity;
-      let minHeight = Infinity;
-      neighbors.forEach((height) => {
-        minHeight = Math.min(minHeight, height);
-      });
-      neighbors.forEach((height) => {
-        if (height <= y + 1) {
-          maxHeight = Math.max(maxHeight, height);
-        }
-      });
-      
-      if ((maxHeight >= y || minHeight >= y) && !neighbors.find((neighborY) => neighborY == y) && !this.removed[idx].find((cube) => cube[0] == neighborX && cube[1] == y && cube[2] == neighborZ)) {
-        if (isNullOrUndefined(this.added[idx])) {
-          this.added[idx] = [];
-        }
-        this.added[idx].push([neighborX, y, neighborZ]);
-        this.chunk.addCube(neighborX, y, neighborZ);
-      }
+      this.added[idx].push([newX, newY, newZ]);
+      this.chunk.addCube(newX, newY, newZ);
+      this.chunk.generateCubePositions();
+
     }
   }
   
