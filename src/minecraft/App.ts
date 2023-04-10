@@ -152,7 +152,7 @@ export class MinecraftAnimation extends CanvasAnimation {
   private fall(playerY: number, height: number) {
     // TODO: more accurate check for which block is under the player (make sure it's supporting the 0.4r cylinder)
     const gravity = -9.8;
-    const t = (Date.now() - this.prevT)/1000.0;
+    const t = (Date.now() - this.prevT)/100.0;
     this.verticalVelocity += gravity * t;
     this.playerPosition.y = Math.max(playerY + this.verticalVelocity * t, height) + 2;
     if (this.playerPosition.y == height + 2) {
