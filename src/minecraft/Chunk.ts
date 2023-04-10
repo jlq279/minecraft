@@ -220,7 +220,7 @@ export class Chunk {
         {
             for(let j=0; j<8; j++)
             {
-                const height = Math.floor(50.0 * rng.next());
+                const height = Math.floor(10.0 * rng.next());
                 const idx = 8 * i + j;
                 whiteNoise[idx] = height;
                 this.oGnoise[idx] = height;
