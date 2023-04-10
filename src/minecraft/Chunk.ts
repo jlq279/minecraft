@@ -3,11 +3,8 @@ import Rand from "../lib/rand-seed/Rand.js"
 import { isNullOrUndefined } from "../lib/rand-seed/helpers.js";
 
 export class Chunk {
-    private eCubes: number;
     private cubes: number; // Number of cubes that should be *drawn* each frame
     private cubePositionsF32: Float32Array; // (4 x cubes) array of cube translations, in homogeneous coordinates
-    private cubePositionsF32t2: Float32Array;
-    private extraCubesF32: Float32Array;
     private x : number; // Center of the chunk
     private y : number;
     private size: number; // Number of cubes along each side of the chunk
@@ -16,7 +13,8 @@ export class Chunk {
     public parent: boolean;
     public topleftx: number;
     public toplefty: number;
-
+    public cubeMap: {[key:string] : number[]} = {};
+    public indexMap: {[key:string] : {[height:number]: number}} = {};
     //trying smt new
     public oGnoise: Float32Array;
     public superOGnoise: Float32Array;
@@ -27,7 +25,6 @@ export class Chunk {
         this.x = centerX;
         this.y = centerY;
         this.size = size;
-        this.eCubes = 0;
         this.cubes = size*size;
         this.oGnoise = new Float32Array(64);
         if(parent)  
@@ -66,65 +63,7 @@ export class Chunk {
             
         }
 
-        
-        
-
-        // this.generateCubes();
-        // if(parent)
-        // {
-        //     let cnt = 1;
-        //     for(let x = this.x -1; x <= this.x + 1; x++){
-        //         for(let y = this.y - 1; y <= this.y + 1; y++)
-        //         {
-        //             if(!(x == this.x && y== this.y))
-        //             {
-        //                 let nkey: string = new String(x + ", " + y).toString();
-        //                 this.children[nkey] = new Chunk(x, y, this.size, false);
-        //                 let childCubes: Float32Array = this.children[nkey].cubePositions();
-        //                 for(let i1 = 0; i1 < this.children[nkey].cubes; i1++)
-        //                 {
-        //                     this.cubePositionsF32[this.size * this.size * cnt*4 + 4 * i1] = childCubes[4*i1];
-        //                     this.cubePositionsF32[this.size * this.size * cnt*4 + 4 * i1 + 1] = childCubes[4*i1 + 1];
-        //                     this.cubePositionsF32[this.size * this.size * cnt*4 + 4 * i1 + 2] = childCubes[4*i1 + 2];
-        //                     this.cubePositionsF32[this.size * this.size * cnt*4 + 4 * i1 + 3] = childCubes[4*i1 + 3];
-        //                 }
-        //                 cnt++;
-
-        //             }
-        //         }
-        //     }
-        //}
     }
-    
-    // private generateExtraCubes(){
-    //     const topleftx = this.x * this.size - this.size / 2;
-    //     const toplefty = this.y * this.size - this.size / 2;
-    //     const extraCubes: [number, number, number][] = [];
-    //     for(let i=0; i<this.size; i++) {
-    //         for(let j=0; j<this.size; j++)
-    //         {
-    //             const height = this.valueNoise[i*this.size + j];
-    //             const heightDifference = this.getMaxHeightDifference(this.valueNoise, i, j);
-    //             if (heightDifference > 1) {
-    //                 this.cubes += heightDifference - 1;
-    //                 for (let k = 1; k < heightDifference; k++) {
-    //                     extraCubes.push([i, j, height - k])
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     for (let idx = 0; idx < 4 * this.eCubes; idx+=4) {
-    //         const extraCube = extraCubes.pop() || [0, 0, 0];
-    //         const i = extraCube[0];
-    //         const j = extraCube[1];
-    //         const height = extraCube[2];
-    //         this.cubePositionsF32[idx + 0] = topleftx + j;
-    //         this.cubePositionsF32[idx + 1] = height;
-    //         this.cubePositionsF32[idx + 2] = toplefty + i;
-    //         this.cubePositionsF32[idx + 3] = 0;
-    //     }
-    // }
-    
     
     private generateCubes() {
         this.topleftx = (this.x - 1) * (this.size) - this.size / 2;
@@ -139,13 +78,17 @@ export class Chunk {
             for(let j=0; j<this.size * 3; j++)
             {
                 const height = noise[i*this.size * 3 + j];
-                const heightDifference = this.getMaxHeightDifference(noise, i, j);
-                if (heightDifference > 1) {
-                    this.cubes += heightDifference - 1;
-                    for (let k = 1; k < heightDifference; k++) {
-                        extraCubes.push([i, j, height - k])
-                    }
+                this.cubes += height;
+                for (let k = 1; k <= height; k++) {
+                    extraCubes.push([i, j, height - k])
                 }
+                // const heightDifference = this.getMaxHeightDifference(noise, i, j);
+                // if (heightDifference > 1) {
+                //     this.cubes += heightDifference - 1;
+                //     for (let k = 1; k < heightDifference; k++) {
+                //         extraCubes.push([i, j, height - k])
+                //     }
+                // }
             }
         }
 
@@ -160,6 +103,10 @@ export class Chunk {
                 this.cubePositionsF32[4*idx + 1] = height;
                 this.cubePositionsF32[4*idx + 2] = this.toplefty + i;
                 this.cubePositionsF32[4*idx + 3] = 0;
+                const key = (this.topleftx + j) + "," + (this.toplefty + i);
+                this.cubeMap[key] = [height];
+                this.indexMap[key] = {};
+                this.indexMap[key][height] = 4*idx;
             }
         }
         
@@ -172,6 +119,9 @@ export class Chunk {
             this.cubePositionsF32[idx + 1] = height;
             this.cubePositionsF32[idx + 2] = this.toplefty + i;
             this.cubePositionsF32[idx + 3] = 0;
+            const key = (this.topleftx + j) + "," + (this.toplefty + i);
+            this.cubeMap[key].push(height);
+            this.indexMap[key][height] = idx;
         }
     }
 
@@ -206,12 +156,14 @@ export class Chunk {
         for (let i = 0; i < 192; i++) {
             for (let j = 0; j < 192; j++) {
                 valueNoise[i*192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)]);
-                this.valueNoise[i * 192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)])
+                // this.valueNoise[i * 192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)])
                 // valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);
                 // this.valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);;
 
             }
         }
+
+        valueNoise[193*192/2] = 90;
 
         return valueNoise;
     }
@@ -273,7 +225,43 @@ export class Chunk {
     public cubePositions(): Float32Array {
         return this.cubePositionsF32;
     }
-    
+
+    public generateCubePositions() {
+        this.cubePositionsF32 = new Float32Array(this.cubes * 4);
+        let idx = 0;
+        this.indexMap = {};
+        for(let i=0; i<this.size*3; i++)
+        {
+            for(let j=0; j<this.size*3; j++)
+            {
+                const x = this.topleftx + j;
+                const z = this.toplefty + i;
+                const key = x + "," + z;
+                this.indexMap[key] = {};
+                this.cubeMap[key].forEach((y) => {
+                    this.cubePositionsF32[idx + 0] = x;
+                    this.cubePositionsF32[idx + 1] = y;
+                    this.cubePositionsF32[idx + 2] = z;
+                    this.cubePositionsF32[idx + 3] = 0;
+                    this.indexMap[key][y] = idx;
+                    idx += 4;
+                });
+            }
+        }
+    }
+
+    public removeCube(x: number, y: number, z: number) {
+        const key = x + "," + z;
+        const index = this.cubeMap[key].findIndex((height) => height == y);
+        this.cubeMap[key].splice(index, 1);
+        this.cubes--;
+    }
+
+    public addCube(x: number, y: number, z: number) {
+        const key = x + "," + z;
+        this.cubeMap[key].push(y);
+        this.cubes++;
+    }
     
     public numCubes(): number {
         return this.cubes;

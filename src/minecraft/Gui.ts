@@ -41,7 +41,7 @@ export class GUI implements IGUI {
   private Wdown: boolean;
   private Sdown: boolean;
   private Ddown: boolean;
-
+  private mouseRay: Vec3;
   /**
    *
    * @param canvas required to get the width and height of the canvas
@@ -132,6 +132,16 @@ export class GUI implements IGUI {
     const dy = mouse.screenY - this.prevY;
     this.prevX = mouse.screenX;
     this.prevY = mouse.screenY;
+    const ndx: number = 2.0 * ((x + 0.5)/this.width) - 1.0;
+    const ndy: number = 2.0 * (1 - (y + 0.5)/this.height) - 1.0;
+    const mouseWorld: Vec4 = this.viewMatrix().inverse().multiply(this.projMatrix().inverse()).multiplyVec4(new Vec4([ndx, ndy, -1, 1]));
+    mouseWorld.scale(1.0/mouseWorld.w);
+
+    const mouseVec3 = new Vec3(mouseWorld.xyz);
+    const p: Vec3 = this.camera.pos();
+    this.mouseRay = Vec3.direction(mouseVec3, p);
+    
+
     if(this.dragging)
     {
         this.camera.rotate(new Vec3([0, 1, 0]), -GUI.rotationSpeed*dx);
@@ -179,6 +189,14 @@ export class GUI implements IGUI {
       }
       case "KeyR": {
         this.animation.reset();
+        break;
+      }
+      case "KeyX": {
+        this.animation.mine(this.mouseRay);
+        break;
+      }
+      case "KeyZ": {
+        this.animation.placeBlock(this.mouseRay);
         break;
       }
       case "Space": {
