@@ -235,6 +235,7 @@ export class MinecraftAnimation extends CanvasAnimation {
         if (this.on(newX, newZ)) {
           const key = newX + "," + newZ;
           const heights = this.chunk.cubeMap[key];
+          console.log("key " + key);
           heights.forEach((height) => {
             if (height + 0.5 <= playerY && height > maxHeight) {
               maxHeight = height;
@@ -290,12 +291,16 @@ export class MinecraftAnimation extends CanvasAnimation {
       // console.log("y " + this.playerCY);
       // console.log("px " + this.playerPosition.x);
       // console.log("py " + this.playerPosition.z);
-      if (!isNullOrUndefined(this.removed[this.loadedCY * 3 + this.loadedCX])) {
-        this.removed[this.loadedCY * 3 + this.loadedCX].forEach((cube) => {
+      const idx = this.loadedCY * 3 + this.loadedCX;
+      if (!isNullOrUndefined(this.removed[idx])) {
+        this.removed[idx].forEach((cube) => {
           this.chunk.removeCube(cube[0], cube[1], cube[2]);
         });
-
-        this.chunk.generateCubePositions();
+      }
+      if (!isNullOrUndefined(this.added[idx])) {
+        this.added[idx].forEach((cube) => {
+          this.chunk.addCube(cube[0], cube[1], cube[2]);
+        });
       }
     }
 
@@ -402,8 +407,17 @@ export class MinecraftAnimation extends CanvasAnimation {
       const neighborKey = neighborX + "," + neighborZ;
       const neighbors = this.chunk.cubeMap[neighborKey];
       let maxHeight = -Infinity;
-      neighbors.forEach((height) => maxHeight = Math.max(maxHeight, height));
-      if (maxHeight >= y && !neighbors.find((neighborY) => neighborY == y) && !this.removed[idx].find((cube) => cube[0] == neighborX && cube[1] == y && cube[2] == neighborZ)) {
+      let minHeight = Infinity;
+      neighbors.forEach((height) => {
+        minHeight = Math.min(minHeight, height);
+      });
+      neighbors.forEach((height) => {
+        if (height <= y + 1) {
+          maxHeight = Math.max(maxHeight, height);
+        }
+      });
+      
+      if ((maxHeight >= y || minHeight >= y) && !neighbors.find((neighborY) => neighborY == y) && !this.removed[idx].find((cube) => cube[0] == neighborX && cube[1] == y && cube[2] == neighborZ)) {
         if (isNullOrUndefined(this.added[idx])) {
           this.added[idx] = [];
         }
@@ -411,8 +425,6 @@ export class MinecraftAnimation extends CanvasAnimation {
         this.chunk.addCube(neighborX, y, neighborZ);
       }
     }
-
-    this.chunk.generateCubePositions();
   }
   
   public jump() {
