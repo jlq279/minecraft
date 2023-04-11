@@ -453,15 +453,17 @@ export class MinecraftAnimation extends CanvasAnimation {
         // console.log("modificationKey " + modificationKey)
         // console.log("set modification " + this.modifications[chunkKey][modificationKey])
         this.chunk.removeCube(x, y, z);
+        // this.modificationKeys[chunk key] => list of cubes that have been changed
+        // this.modifications[chunk key] => list of maps [cube that has been changed] => "ADD" v"REMOVE" undef
         const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
         // console.log(y)
         for (let i = 0; i < offset.length; i++) {
           const neighborX = x + offset[i][0];
           const neighborZ = z + offset[i][1];
           const neighborKey = neighborX + "," + neighborZ;
-          const neighbors = this.chunk.cubeMap[neighborKey].sort();
-          const maxHeight = neighbors[neighbors.length - 1];
-          console.log(neighbors)
+          const neighborHeights = this.chunk.cubeMap[neighborKey].sort();
+          const maxHeight = neighborHeights[neighborHeights.length - 1];
+          console.log(neighborHeights)
           let removed = false;
           const neighborChunkCoords = this.getChunkCoords(x, z);
           const neighborChunkKey = neighborChunkCoords[0] + "," + neighborChunkCoords[1];
