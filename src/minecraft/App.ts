@@ -366,7 +366,7 @@ export class MinecraftAnimation extends CanvasAnimation {
     gl.viewport(x, y, width, height);
     //TODO: Render multiple chunks around the player, using Perlin noise shaders
     this.blankCubeRenderPass.updateAttributeBuffer("aOffset", this.chunk.cubePositions());
-    this.blankCubeRenderPass.updateAttributeBuffer("type", this.chunk.cubeType);
+    this.blankCubeRenderPass.updateAttributeBuffer("type", this.chunk.types());
     this.blankCubeRenderPass.drawInstanced(this.chunk.numCubes());    
 
   }

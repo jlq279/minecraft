@@ -16,9 +16,11 @@ export class Chunk {
     public cubeMap: {[key:string] : number[]} = {};
     public indexMap: {[key:string] : {[height:number]: number}} = {};
     public cubeType: Float32Array;
+    public biomes: Float32Array;
     //trying smt new
     public oGnoise: Float32Array;
     public superOGnoise: Float32Array;
+    public superBiomes: Float32Array;
     public amp: number;
     public center: number;
     public biome: number;
@@ -31,10 +33,13 @@ export class Chunk {
         this.size = size;
         this.cubes = size*size;
         this.oGnoise = new Float32Array(64);
+        this.biomes = new Float32Array(64);
         if(parent)  
         {
             this.valueNoise = new Float32Array(this.size * this.size * 9);    
             this.superOGnoise = new Float32Array(24 * 24);
+            this.superBiomes = new Float32Array(24*24);
+
             this.cubes *= 9;
             for(let x = this.x -1; x <= this.x + 1; x++){
                 for(let y = this.y - 1; y <= this.y + 1; y++)
@@ -42,6 +47,8 @@ export class Chunk {
                 
                     let nkey: string = new String(x + ", " + y).toString();
                     this.children[nkey] = new Chunk(x, y, this.size, false, false);
+                    // console.log("xy: " + x + ", " + y);
+                    // console.log("list here: ");
                     for(let x2 = 0; x2 < 8; x2++)
                     {
                         for(let y2 = 0; y2 < 8; y2++)
@@ -49,9 +56,11 @@ export class Chunk {
                             let sindex = this.xyToLine(8*(x+1 - this.x) + x2, 8*(y+1 - this.y) + y2, 24);
                             let index = this.xyToLine(x2, y2, 8);
                             this.superOGnoise[sindex] = this.children[nkey].oGnoise[index]; 
+                            this.superBiomes[sindex] = this.children[nkey].biomes[index];
+                            
                         }
                     }
-                    if(y == this.y  && x == this.x) this.biome = this.children[nkey].biome;
+                    // console.log(this.children[nkey].biomes.toLocaleString());
                     
                 }
             }
@@ -65,9 +74,8 @@ export class Chunk {
             let rng = new Rand(seed);
             // const noise = this.generateValueNoise(rng);
             this.generateWhiteNoise(rng);
-            console.log("chunk: " + this.x + ", " + this.y);
-            console.log("biome: " + this.biome);
-            console.log("center: " + this.center);
+            
+            // console.log(" list here: " + this.biomes.toLocaleString());
             
         }
 
@@ -81,6 +89,7 @@ export class Chunk {
         const seed = new String(this.x + ", " + this.y).toString();
         let rng = new Rand(seed);
         const noise = this.generateValueNoise(rng);
+        const biomes = this.generateBiomeNoise();
         const extraCubes: [number, number, number][] = [];
         for(let i=0; i<this.size * 3; i++) {
             for(let j=0; j<this.size * 3; j++)
@@ -102,7 +111,7 @@ export class Chunk {
 
         this.cubePositionsF32 = new Float32Array(this.cubes * 4);
         this.cubeType = new Float32Array(this.cubes);
-        console.log(this.biome);
+        // console.log(this.biome);
         for(let i=0; i<this.size*3; i++)
         {
             for(let j=0; j<this.size*3; j++)
@@ -114,7 +123,7 @@ export class Chunk {
                 this.cubePositionsF32[4*idx + 2] = this.toplefty + i;
                 this.cubePositionsF32[4*idx + 3] = 0;
 
-                this.cubeType[idx] = this.biome;
+                this.cubeType[idx] = biomes[idx];
                 
                 const key = (this.topleftx + j) + "," + (this.toplefty + i);
                 this.cubeMap[key] = [height];
@@ -132,10 +141,12 @@ export class Chunk {
             this.cubePositionsF32[idx + 1] = height;
             this.cubePositionsF32[idx + 2] = this.toplefty + i;
             this.cubePositionsF32[idx + 3] = 0;
+            this.cubeType[idx] = 0;
             const key = (this.topleftx + j) + "," + (this.toplefty + i);
             this.cubeMap[key].push(height);
             this.indexMap[key][height] = idx;
         }
+        // console.log(this.cubeType.toLocaleString());
     }
 
     private getMaxHeightDifference(noise: Float32Array, row: number, col: number): number {
@@ -166,19 +177,37 @@ export class Chunk {
         const upsample2 = this.upsample(upsample1); 
         const upsample3 = this.upsample(upsample2);
         const valueNoise = new Float32Array(this.size * this.size * 9);
+
+        
+
+
+
         for (let i = 0; i < 192; i++) {
             for (let j = 0; j < 192; j++) {
                 valueNoise[i*192 + j] =  Math.floor(0.5 *upsample3[i*192 + j] + 0.25 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.125 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)]);
-                // this.valueNoise[i * 192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)])
-                // valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);
-                // this.valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);;
 
             }
         }
 
-        valueNoise[193*192/2] = 90;
+        
 
         return valueNoise;
+    }
+
+    private generateBiomeNoise(): Float32Array{
+        const upbiome = this.upsample(this.superBiomes);
+        const upbiome2 = this.upsample(upbiome);
+        const upbiome3 = this.upsample(upbiome2);
+        const finbiome = new Float32Array(this.size * this.size * 9);
+        // console.log("noise here: ");
+        
+        for (let i = 0; i < 192; i++) {
+            for (let j = 0; j < 192; j++) {
+                finbiome[i*192 + j] =  0.5 *upbiome3[i*192 + j] + 0.25 * upbiome2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.125 * upbiome[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superBiomes[Math.trunc(i/8)*24 + Math.trunc(j/8)];
+            }
+        }
+        // console.log(finbiome.toLocaleString());
+        return finbiome;
     }
 
     private generateWhiteNoise(rng: Rand): Float32Array {
@@ -189,12 +218,46 @@ export class Chunk {
         {
             for(let j=0; j<8; j++)
             {
+                
+                
+                let gridX2 = this.x;
+                let gridY2 = this.y;
+                let locx = 1/16 + 1/8 * j;
+                let locy = 1/16 + 1/8 * i;
+                let xDiff = Math.abs(0.5 - locx);
+                let yDiff = Math.abs(0.5 - locy);
+
+                if(locx > 0.5)
+                    gridX2 = this.x + 1;
+                else {
+                    gridX2 = this.x - 1;
+                }
+                if(locy > 0.5)
+                    gridY2 = this.y + 1;
+                else {
+                    gridY2 = this.y - 1;
+                }
+
+                let b00: Float32Array = this.detBiomeVals(this.x, this.y);
+                let b01: Float32Array = this.detBiomeVals(this.x, gridY2);
+                let b10: Float32Array = this.detBiomeVals(gridX2, this.y);
+                let b11: Float32Array = this.detBiomeVals(gridX2, gridY2);
+
+                let smt1: number = this.smoothmix(b00[0], b10[0], xDiff);
+                let smt2: number = this.smoothmix(b01[0], b11[0], xDiff);
+
+
+
+                
                 this.detBiome(this.x, this.y, i, j);
                 const height = Math.floor(this.amp * rng.next() + this.center);
-                
+
+
                 const idx = 8 * i + j;
                 whiteNoise[idx] = height;
                 this.oGnoise[idx] = height;
+                this.biomes[idx] = this.smoothmix(smt1, smt2, yDiff);
+                
             }
         }
         return whiteNoise;
@@ -270,6 +333,7 @@ export class Chunk {
                 
             }
         }
+        console.log(this.cubeType.toLocaleString());
     }
 
     public removeCube(x: number, y: number, z: number) {
@@ -299,7 +363,7 @@ export class Chunk {
         
         // check for microbiomes
         
-        if(value > 9) 
+        if(value > 8) 
         {
             ret[0] = 5;
             ret[1] = 10;
@@ -347,7 +411,7 @@ export class Chunk {
                 if(value <= 8) 
                 {
                     ret[2] = (ret[2] + 30) / 2;
-                    //ret[0]--;
+                    ret[0]--;
                 }
             }
             else if(x - 4*xC >= 3)
@@ -362,7 +426,7 @@ export class Chunk {
                 if(value <= 8) 
                 {
                     ret[2] = (ret[2] + 30) / 2;
-                    //ret[0]--;
+                    ret[0]--;
                 }
             }
 
@@ -379,7 +443,7 @@ export class Chunk {
                 if(value <= 8) 
                 {
                     ret[2] = (ret[2] + 30) / 2;
-                    //ret[0]--;
+                    ret[0]--;
                 }
             }
             else if(y - 4*yC >= 3)
@@ -393,7 +457,7 @@ export class Chunk {
                 if(value <= 8) 
                 {
                     ret[2] = (ret[2] + 30) / 2;
-                    //ret[0]--;
+                    ret[0]--;
                 }
             }
 
@@ -413,7 +477,7 @@ export class Chunk {
     }
 
 
-    public detBiome(x: number, y: number, row: number, col: number) {
+    public detBiome(x: number, y: number, row: number, col: number): number {
         
         
         let nX = 1/16 + 1/8 * col;
@@ -459,13 +523,17 @@ export class Chunk {
 
         amp1 = this.smoothmix(v00[0], v10[0], diffX);
         amp2 = this.smoothmix(v01[0], v11[0], diffX);
-        this.biome = v00[0];
-        
+        this.biome = this.smoothmix(amp1, amp2, diffY);
+        return this.biome;        
 
 
     }
     
     public numCubes(): number {
         return this.cubes;
+    }
+
+    public types(): Float32Array {
+        return this.cubeType;
     }
 }
