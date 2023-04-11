@@ -15,6 +15,7 @@ export class Chunk {
     public toplefty: number;
     public cubeMap: {[key:string] : number[]} = {};
     public indexMap: {[key:string] : {[height:number]: number}} = {};
+    public cubeTypeMap: {[key:string] : {[height:number]: number}} = {};
     public cubeType: Float32Array;
     public biomes: Float32Array;
     //trying smt new
@@ -123,12 +124,12 @@ export class Chunk {
                 this.cubePositionsF32[4*idx + 2] = this.toplefty + i;
                 this.cubePositionsF32[4*idx + 3] = 0;
 
-                this.cubeType[idx] = biomes[idx];
-                
                 const key = (this.topleftx + j) + "," + (this.toplefty + i);
                 this.cubeMap[key] = [height];
                 this.indexMap[key] = {};
                 this.indexMap[key][height] = 4*idx;
+                this.cubeTypeMap[key] = {};
+                this.cubeTypeMap[key][height] = biomes[idx];
             }
         }
         
@@ -141,10 +142,11 @@ export class Chunk {
             this.cubePositionsF32[idx + 1] = height;
             this.cubePositionsF32[idx + 2] = this.toplefty + i;
             this.cubePositionsF32[idx + 3] = 0;
-            this.cubeType[idx] = 0;
+            // this.cubeType[idx] = 0;
             const key = (this.topleftx + j) + "," + (this.toplefty + i);
             this.cubeMap[key].push(height);
             this.indexMap[key][height] = idx;
+            this.cubeTypeMap[key][height] = 0;
         }
         // console.log(this.cubeType.toLocaleString());
     }
@@ -322,18 +324,18 @@ export class Chunk {
                     const key = x + "," + z;
                     this.indexMap[key] = {};
                     this.cubeMap[key].forEach((y) => {
-                    this.cubePositionsF32[idx + 0] = x;
-                    this.cubePositionsF32[idx + 1] = y;
-                    this.cubePositionsF32[idx + 2] = z;
-                    this.cubePositionsF32[idx + 3] = 0;
-                    this.indexMap[key][y] = idx;
-                    idx += 4;
+                    this.cubePositionsF32[4 * idx + 0] = x;
+                    this.cubePositionsF32[4 * idx + 1] = y;
+                    this.cubePositionsF32[4 * idx + 2] = z;
+                    this.cubePositionsF32[4 * idx + 3] = 0;
+                    this.indexMap[key][y] = 4 * idx;
+                    this.cubeType[idx] = this.cubeTypeMap[key][y];
+                    idx++;
                 });
                 }
                 
             }
         }
-        console.log(this.cubeType.toLocaleString());
     }
 
     public removeCube(x: number, y: number, z: number) {
