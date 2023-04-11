@@ -204,13 +204,11 @@ export class MinecraftAnimation extends CanvasAnimation {
     return !this.gui.walkDir().equals(new Vec3());
   }
 
-  private walk(cubeIndex: number) {
+  private walk(cubeIndex: number): [number, number] {
     const cubeX = this.chunk.cubePositions()[cubeIndex + 0];
     const cubeZ = this.chunk.cubePositions()[cubeIndex + 2];
     const walkX = this.gui.walkDir().x;
     const walkZ = this.gui.walkDir().z;
-    let diffX = 0;
-    let diffZ = 0;
     const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     for (let i = 0; i < offset.length; i++) {
       const key = (cubeX + offset[i][0]) + "," + (cubeZ + offset[i][1]);
@@ -218,26 +216,19 @@ export class MinecraftAnimation extends CanvasAnimation {
       if (!isNullOrUndefined(neighbors.find((height) => height + 0.5 > this.playerPosition.y - 2 && height - 0.5 < this.playerPosition.y))) {
         if (i < 2) {
           if (offset[i][0] < 0 && walkX < 0)
-            return;
+            return [0, 0];
           if (offset[i][0] > 0 && walkX > 0)
-            return;
+            return [0, 0];
         }
         else {
           if (offset[i][1] < 0 && walkZ < 0)
-            return;
+            return [0, 0];
           if (offset[i][1] > 0 && walkZ > 0)
-            return;
+            return [0, 0];
         }
       }
-      else {
-        if (i < 2) diffX = walkX;
-        else diffZ = walkZ;
-      }
     }
-    if (!((walkX != 0 && diffX == 0) || (walkZ != 0 && diffZ == 0))) {
-      this.playerPosition.x += diffX;
-      this.playerPosition.z += diffZ;
-    }
+    return [walkX, walkZ];
   }
 
   private on(x: number, z:number): boolean {
@@ -253,14 +244,13 @@ export class MinecraftAnimation extends CanvasAnimation {
     return false;
   }
 
-  private findSupportingCube() {
+  private findSupportingCubes() {
     const playerX = this.playerPosition.x;
     const playerY = this.playerPosition.y - 2;
     const playerZ = this.playerPosition.z;
     const cubeX = Math.round(playerX);
     const cubeZ = Math.round(playerZ);
-    let cubeIndex: number = NaN;
-    let maxHeight = -Infinity;
+    let cubeIndexes: number[] = [];
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
         const newX = cubeX + dx;
@@ -268,29 +258,54 @@ export class MinecraftAnimation extends CanvasAnimation {
         if (this.on(newX, newZ)) {
           const key = newX + "," + newZ;
           const heights = this.chunk.cubeMap[key];
-          heights.forEach((height) => {
-            if (height + 0.5 <= playerY && height > maxHeight) {
-              maxHeight = height;
-              cubeIndex = this.chunk.indexMap[key][height];
+          const maxHeight = heights.reduce((max, height) => {
+            if (max + 0.5 > playerY) {
+              max = -Infinity;
             }
+            if (height + 0.5 <= playerY) {
+              return Math.max(max, height)
+            }
+            else return max;
           });
+          if (maxHeight != -Infinity)
+            cubeIndexes.push(this.chunk.indexMap[key][maxHeight]);
         }
       }
     }
-    return cubeIndex;
+    return cubeIndexes;
   }
 
   private move() {
-    const cubeIndex = this.findSupportingCube();
-    if (Number.isNaN(cubeIndex)) {
+    const cubeIndexes = this.findSupportingCubes();
+    if (cubeIndexes.length == 0) {
       console.log("cannot find supporting cube");
     }
     else {
-      if (this.canFall(cubeIndex)) {
-        this.fall(cubeIndex);
+      const maxHeightCubeIndex = cubeIndexes.reduce((max, height) => {
+        return Math.max(max, height);
+      });
+      if (this.canFall(maxHeightCubeIndex)) {
+        this.fall(maxHeightCubeIndex);
       }
       if (this.walking()) {
-        this.walk(cubeIndex);
+        let diffX = NaN;
+        let diffZ = NaN;
+        cubeIndexes.forEach((cubeIndex) => {
+          const diff = this.walk(cubeIndex);
+          if (Number.isNaN(diffX) && Number.isNaN(diffZ)) {
+            diffX = diff[0];
+            diffZ = diff[1];
+          }
+          else {
+            if (diffX == 0 && diffZ == 0) {
+              return;
+            }
+            diffX = diff[0];
+            diffZ = diff[1];
+          }
+        })
+        this.playerPosition.x += diffX;
+        this.playerPosition.z += diffZ;
       }
     }
   }
