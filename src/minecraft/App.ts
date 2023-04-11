@@ -145,6 +145,16 @@ export class MinecraftAnimation extends CanvasAnimation {
       new Float32Array(0)
     );
 
+    this.blankCubeRenderPass.addInstancedAttribute("type",
+      1,
+      this.ctx.FLOAT,
+      false,
+      Float32Array.BYTES_PER_ELEMENT,
+      0,
+      undefined,
+      new Float32Array(0)
+    );
+
     this.blankCubeRenderPass.addUniform("uLightPos",
       (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
         gl.uniform4fv(loc, this.lightPosition.xyzw);
@@ -356,6 +366,7 @@ export class MinecraftAnimation extends CanvasAnimation {
     gl.viewport(x, y, width, height);
     //TODO: Render multiple chunks around the player, using Perlin noise shaders
     this.blankCubeRenderPass.updateAttributeBuffer("aOffset", this.chunk.cubePositions());
+    this.blankCubeRenderPass.updateAttributeBuffer("type", this.chunk.cubeType);
     this.blankCubeRenderPass.drawInstanced(this.chunk.numCubes());    
 
   }

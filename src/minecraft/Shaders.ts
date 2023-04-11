@@ -8,12 +8,14 @@ export const blankCubeVSText = `
     attribute vec4 aNorm;
     attribute vec4 aVertPos;
     attribute vec4 aOffset;
+    attribute float type;
     attribute vec2 aUV;
     
     varying vec4 normal;
     varying vec4 wsPos;
     varying vec2 uv;
     varying float seed;
+    varying float type2;
 
     
 
@@ -25,6 +27,7 @@ export const blankCubeVSText = `
         uv = aUV;
         float val = aOffset.x * 100.0 + aOffset.y * 10.0 + aOffset.z + normal.x * 0.1 + normal.y * 0.01 + normal.z * 0.001;
         seed = sin(val);
+        type2 = type;
 
     }
 `;
@@ -38,6 +41,7 @@ export const blankCubeFSText = `
     varying vec4 wsPos;
     varying vec2 uv;
     varying float seed;
+    varying float type2;
     
     float random (in vec2 pt, in float seed) {
         return fract(sin( (seed + dot(pt.xy, vec2(12.9898,78.233))))*43758.5453123);
@@ -268,7 +272,10 @@ export const blankCubeFSText = `
             }
         // }
 
-        vec3 color = marble(finnoise);
+        vec3 color = vec3(0.5, 0.5, 0.5);
+        if(type2 == 8.0) color = marble(finnoise);
+        else if(type2 == 5.0) color = dirt(finnoise);
+        else color = grassBlk(finnoise);
         vec3 ka = 0.1 * color;
         vec3 kd = color;
 

@@ -15,6 +15,7 @@ export class Chunk {
     public toplefty: number;
     public cubeMap: {[key:string] : number[]} = {};
     public indexMap: {[key:string] : {[height:number]: number}} = {};
+    public cubeType: Float32Array;
     //trying smt new
     public oGnoise: Float32Array;
     public superOGnoise: Float32Array;
@@ -50,6 +51,7 @@ export class Chunk {
                             this.superOGnoise[sindex] = this.children[nkey].oGnoise[index]; 
                         }
                     }
+                    if(y == this.y  && x == this.x) this.biome = this.children[nkey].biome;
                     
                 }
             }
@@ -99,6 +101,8 @@ export class Chunk {
         }
 
         this.cubePositionsF32 = new Float32Array(this.cubes * 4);
+        this.cubeType = new Float32Array(this.cubes);
+        console.log(this.biome);
         for(let i=0; i<this.size*3; i++)
         {
             for(let j=0; j<this.size*3; j++)
@@ -109,6 +113,9 @@ export class Chunk {
                 this.cubePositionsF32[4*idx + 1] = height;
                 this.cubePositionsF32[4*idx + 2] = this.toplefty + i;
                 this.cubePositionsF32[4*idx + 3] = 0;
+
+                this.cubeType[idx] = this.biome;
+                
                 const key = (this.topleftx + j) + "," + (this.toplefty + i);
                 this.cubeMap[key] = [height];
                 this.indexMap[key] = {};
