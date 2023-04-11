@@ -174,8 +174,42 @@ export const blankCubeFSText = `
 
     }
 
-    
+    vec3 dirt(float noise) {
+        float val = (sin(16.0 * uv.x + 16.0 * noise) + sin(16.0 * uv.y + 16.0 * noise) + 1.0) / 2.0;
+        float r = val * 0.35;
+        float g = val * 0.25;
+        float b = val * 0.2;
+        if (val < 0.25) {
+            r = (0.5 - val) * 0.35;
+            g = (0.5 - val) * 0.25;
+            b = (0.5 - val) * 0.2;
+        }
+        return vec3(r, g, b);
+    }
 
+    vec3 grassBlk(float noise) {
+        float val = noise;
+        float r = val * 0.15;
+        float g = val;
+        float b = val * 0.5;
+        if(val < 0.5) {
+            b = val * 0.65;
+        }
+        return vec3(r, g, b);
+    }
+
+    vec3 marble(float noise) {
+        float val = (abs(sin(8.0 * uv.x + 8.0 * uv.y + 32.0 * noise)) + 3.0) / 4.0;
+        float r = val;
+        float g = val * 0.9;
+        float b = val * 0.85;
+        if (val < 0.85) {
+            r = val * 0.95;
+            g = val * 0.75;
+            b = val * 0.7; 
+        }
+        return vec3(r, g, b);
+    }
 
     void main() {
         float noise = perlin(uv.x, uv.y, seed, 2.0);
@@ -234,8 +268,9 @@ export const blankCubeFSText = `
             }
         // }
 
-        vec3 ka = vec3(0.1 * r + 0.1, 0.1 * g + 0.1, 0.1 * b + 0.1);
-        vec3 kd = vec3(r, g, b);
+        vec3 color = marble(finnoise);
+        vec3 ka = 0.1 * color;
+        vec3 kd = color;
 
         /* Compute light fall off */
         vec4 lightDirection = uLightPos - wsPos;
