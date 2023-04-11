@@ -36,6 +36,7 @@ export class MinecraftAnimation extends CanvasAnimation {
   private playerPosition: Vec3;
   private verticalVelocity: number;
   private prevT: number;
+  private prevTB: boolean;
   private playerCX: number;
   private playerCY: number;
   private loadedCX: number;
@@ -43,6 +44,7 @@ export class MinecraftAnimation extends CanvasAnimation {
 
   private removed:{[chunk: number]: [number, number, number][]} = {};
   private added:{[chunk: number]: [number, number, number][]} = {};
+  
   
   
   constructor(canvas: HTMLCanvasElement) {
@@ -65,6 +67,7 @@ export class MinecraftAnimation extends CanvasAnimation {
     this.playerCY = 0;
     this.loadedCX = 0;
     this.loadedCY = 0;
+    this.prevTB = false;
 
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
@@ -154,8 +157,12 @@ export class MinecraftAnimation extends CanvasAnimation {
   private fall(cubeIndex: number) {
     // TODO: more accurate check for which block is under the player (make sure it's supporting the 0.4r cylinder)
     const gravity = -9.8;
-    const t = (Date.now() - this.prevT)/100.0;
+    const t = (Date.now() - this.prevT)/1000.0;
+    this.prevT = Date.now();
+    this.prevTB = true;
+    // console.log(Date.now() - this.prevT);
     this.verticalVelocity += gravity * t;
+    //console.log(this.verticalVelocity);
     const playerY = this.playerPosition.y - 2;
     this.playerPosition.y = Math.max(playerY + this.verticalVelocity * t, this.chunk.cubePositions()[cubeIndex + 1] + 0.5) + 2;
     if (this.playerPosition.y - 2 == this.chunk.cubePositions()[cubeIndex + 1] + 0.5) {
@@ -317,7 +324,8 @@ export class MinecraftAnimation extends CanvasAnimation {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // null is the default frame buffer
     this.drawScene(0, 0, 1280, 960);      
-    this.prevT = Date.now();
+    if(!this.prevTB) this.prevT = Date.now();
+    this.prevTB = false;
   }
 
   private drawScene(x: number, y: number, width: number, height: number): void {

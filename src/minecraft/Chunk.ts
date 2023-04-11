@@ -18,6 +18,9 @@ export class Chunk {
     //trying smt new
     public oGnoise: Float32Array;
     public superOGnoise: Float32Array;
+    public amp: number;
+    public center: number;
+    public biome: number;
 
     constructor(centerX : number, centerY : number, size: number, parent: boolean, full: boolean) {
 
@@ -60,6 +63,9 @@ export class Chunk {
             let rng = new Rand(seed);
             // const noise = this.generateValueNoise(rng);
             this.generateWhiteNoise(rng);
+            console.log("chunk: " + this.x + ", " + this.y);
+            console.log("biome: " + this.biome);
+            console.log("center: " + this.center);
             
         }
 
@@ -78,17 +84,17 @@ export class Chunk {
             for(let j=0; j<this.size * 3; j++)
             {
                 const height = noise[i*this.size * 3 + j];
-                this.cubes += height;
-                for (let k = 1; k <= height; k++) {
-                    extraCubes.push([i, j, height - k])
-                }
-                // const heightDifference = this.getMaxHeightDifference(noise, i, j);
-                // if (heightDifference > 1) {
-                //     this.cubes += heightDifference - 1;
-                //     for (let k = 1; k < heightDifference; k++) {
-                //         extraCubes.push([i, j, height - k])
-                //     }
+                // this.cubes += height;
+                // for (let k = 1; k <= height; k++) {
+                //     extraCubes.push([i, j, height - k])
                 // }
+                const heightDifference = this.getMaxHeightDifference(noise, i, j);
+                if (heightDifference > 1) {
+                    this.cubes += heightDifference - 1;
+                    for (let k = 1; k < heightDifference; k++) {
+                        extraCubes.push([i, j, height - k])
+                    }
+                }
             }
         }
 
@@ -155,7 +161,7 @@ export class Chunk {
         const valueNoise = new Float32Array(this.size * this.size * 9);
         for (let i = 0; i < 192; i++) {
             for (let j = 0; j < 192; j++) {
-                valueNoise[i*192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)]);
+                valueNoise[i*192 + j] =  Math.floor(0.5 *upsample3[i*192 + j] + 0.25 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.125 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)]);
                 // this.valueNoise[i * 192 + j] = Math.floor(upsample3[i*192 + j] + 0.5 * upsample2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.25 * upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*24 + Math.trunc(j/8)])
                 // valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);
                 // this.valueNoise[i*192 + j] = Math.floor(upsample1[Math.trunc(i/4)*48 + Math.trunc(j/4)]);;
@@ -170,11 +176,15 @@ export class Chunk {
 
     private generateWhiteNoise(rng: Rand): Float32Array {
         const whiteNoise: Float32Array = new Float32Array(64);
+        
+
         for(let i=0; i<8; i++)
         {
             for(let j=0; j<8; j++)
             {
-                const height = Math.floor(10.0 * rng.next());
+                this.detBiome(this.x, this.y, i, j);
+                const height = Math.floor(this.amp * rng.next() + this.center);
+                
                 const idx = 8 * i + j;
                 whiteNoise[idx] = height;
                 this.oGnoise[idx] = height;
@@ -209,6 +219,7 @@ export class Chunk {
                         if(a == newR || a == newR + 1) contriby = 3;
                         if(b == newC || b == newC + 1) contribx = 3;
                         upsampled[index] += contribx * contriby * value / 16;
+                        
                     }
                 }
             }
@@ -234,11 +245,13 @@ export class Chunk {
         {
             for(let j=0; j<this.size*3; j++)
             {
-                const x = this.topleftx + j;
-                const z = this.toplefty + i;
-                const key = x + "," + z;
-                this.indexMap[key] = {};
-                this.cubeMap[key].forEach((y) => {
+                if(i > 8 && i < this.size*3 - 8 && j > 8 && j < this.size * 3 - 8)
+                {
+                    const x = this.topleftx + j;
+                    const z = this.toplefty + i;
+                    const key = x + "," + z;
+                    this.indexMap[key] = {};
+                    this.cubeMap[key].forEach((y) => {
                     this.cubePositionsF32[idx + 0] = x;
                     this.cubePositionsF32[idx + 1] = y;
                     this.cubePositionsF32[idx + 2] = z;
@@ -246,6 +259,8 @@ export class Chunk {
                     this.indexMap[key][y] = idx;
                     idx += 4;
                 });
+                }
+                
             }
         }
     }
@@ -261,6 +276,186 @@ export class Chunk {
         const key = x + "," + z;
         this.cubeMap[key].push(y);
         this.cubes++;
+    }
+
+    
+    public detBiomeVals(x: number, y: number) : Float32Array {
+        let xC: number = Math.floor(x / 2);
+        let yC: number = Math.floor(y / 2);
+
+        let nkey: string = new String(xC + ", " + yC + " biome").toString();
+        let rng = new Rand(nkey);
+
+        let value = rng.next() * 10;
+
+        let ret: Float32Array = new Float32Array(3);
+        
+        // check for microbiomes
+        
+        if(value > 9) 
+        {
+            ret[0] = 5;
+            ret[1] = 10;
+            ret[2] = 10 * rng.next() + 40;
+        }
+        else if (value > 2) 
+        {
+            ret[0] = 3;
+            ret[1] = 5;
+            ret[2] = 30;
+        }
+        else 
+        {
+            ret[0] = 1;
+            ret[1] = 5;
+            ret[2] = rng.next() * 20; 
+        }
+
+        // check for high priority biome (mountains)
+        
+        xC = Math.floor(x / 4);
+        yC = Math.floor(y / 4);
+
+        let nkey3: string = new String(xC + ", " + yC + " superbiome").toString();
+        rng = new Rand(nkey3);
+
+        value = rng.next() * 10;
+
+        if(value > 8)
+        {
+            ret[0] = 8;
+            ret[1] = 10;
+            ret[2] = rng.next() * 20 + 70;
+
+            if(x - 4*xC < 0.5)
+            {
+
+                let xC3: number = xC - 1;
+                
+
+                let nkey2: string = new String(xC3 + ", " + yC + " superbiome").toString();
+                rng = new Rand(nkey2);
+
+                value = rng.next() * 10;
+                if(value <= 8) 
+                {
+                    ret[2] = (ret[2] + 30) / 2;
+                    //ret[0]--;
+                }
+            }
+            else if(x - 4*xC >= 3)
+            {
+                let xC3: number = xC + 1;
+                
+
+                let nkey2: string = new String(xC3 + ", " + yC + " superbiome").toString();
+                rng = new Rand(nkey2);
+
+                value = rng.next() * 10;
+                if(value <= 8) 
+                {
+                    ret[2] = (ret[2] + 30) / 2;
+                    //ret[0]--;
+                }
+            }
+
+            if(y - 4*yC < 1)
+            {
+
+                let yC3: number = yC - 1;
+                
+
+                let nkey2: string = new String(xC + ", " + yC3 + " superbiome").toString();
+                rng = new Rand(nkey2);
+
+                value = rng.next() * 10;
+                if(value <= 8) 
+                {
+                    ret[2] = (ret[2] + 30) / 2;
+                    //ret[0]--;
+                }
+            }
+            else if(y - 4*yC >= 3)
+            {
+                let yC3: number = yC + 1;
+
+                let nkey2: string = new String(xC + ", " + yC3 + " superbiome").toString();
+                rng = new Rand(nkey2);
+
+                value = rng.next() * 10;
+                if(value <= 8) 
+                {
+                    ret[2] = (ret[2] + 30) / 2;
+                    //ret[0]--;
+                }
+            }
+
+        }
+        else 
+        {
+            ret[2] += rng.next() * 10;
+        }
+
+
+
+        return ret;
+    }
+
+    public smoothmix(a0: number,  a1: number,  w: number) : number {
+        return (a1 - a0) * (3.0 - w * 2.0) * w * w + a0;
+    }
+
+
+    public detBiome(x: number, y: number, row: number, col: number) {
+        
+        
+        let nX = 1/16 + 1/8 * col;
+        let nY = 1/16 + 1/8 * row;
+
+        let centX = 0.5;
+        let centY = 0.5;
+
+        let gridX = x;
+        let gridY = y;
+        let gridX2 = x;
+        let gridY2 = y;
+
+        let diffX = Math.abs(nX - centX);
+        let diffY = Math.abs(nY - centY);
+
+        if(nX < 0.5) 
+        {
+            gridX -= 1;
+            diffX = 1 - diffX;
+        }
+        else gridX2 += 1;
+        if(nY < 0.5) 
+        {
+            gridY -= 1;
+            diffY = 1 - diffY;
+        }
+        else gridY2 += 1;
+
+        let v00: Float32Array = this.detBiomeVals(gridX, gridY);
+        let v10: Float32Array = this.detBiomeVals(gridX2, gridY);
+        let v01: Float32Array = this.detBiomeVals(gridX, gridY2);
+        let v11: Float32Array = this.detBiomeVals(gridX2, gridY2);
+
+
+        let amp1: number = this.smoothmix(v00[1], v10[1], diffX);
+        let amp2: number = this.smoothmix(v01[1], v11[1], diffX);
+        this.amp = this.smoothmix(amp1, amp2, diffY);
+
+        amp1 = this.smoothmix(v00[2], v10[2], diffX);
+        amp2 = this.smoothmix(v01[2], v11[2], diffX);
+        this.center = this.smoothmix(amp1, amp2, diffY);
+
+        amp1 = this.smoothmix(v00[0], v10[0], diffX);
+        amp2 = this.smoothmix(v01[0], v11[0], diffX);
+        this.biome = v00[0];
+        
+
+
     }
     
     public numCubes(): number {
