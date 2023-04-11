@@ -273,8 +273,8 @@ export const blankCubeFSText = `
         // }
 
         vec3 color = vec3(0.5, 0.5, 0.5);
-        if(type2 == 8.0) color = marble(finnoise);
-        else if(type2 == 5.0) color = dirt(finnoise);
+        if(type2 >  5.0) color = marble(finnoise);
+        else if(type2 > 3.0) color = dirt(finnoise);
         else color = grassBlk(finnoise);
         vec3 ka = 0.1 * color;
         vec3 kd = color;
