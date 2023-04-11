@@ -182,12 +182,15 @@ export class MinecraftAnimation extends CanvasAnimation {
     const t = (performance.now() - this.prevT)/1000.0;
     this.prevT = performance.now();
     this.prevTB = true;
-    // console.log(Date.now() - this.prevT);
-
     this.verticalVelocity += gravity * t;
-    //console.log(this.verticalVelocity);
+    const cubeX = this.chunk.cubePositions()[cubeIndex + 0];
+    const cubeZ = this.chunk.cubePositions()[cubeIndex + 2];
     const playerY = this.playerPosition.y - 2;
     this.playerPosition.y = Math.max(playerY + this.verticalVelocity * t, this.chunk.cubePositions()[cubeIndex + 1] + 0.5) + 2;
+    const aboveY = this.chunk.cubeMap[cubeX + "," + cubeZ].sort().find((y) => y > playerY);
+    if (aboveY) {
+      this.playerPosition.y = Math.min(this.playerPosition.y, aboveY - 0.5);
+    }
     if (this.playerPosition.y - 2 == this.chunk.cubePositions()[cubeIndex + 1] + 0.5) {
       this.cancelFall();
     }
@@ -430,70 +433,73 @@ export class MinecraftAnimation extends CanvasAnimation {
       const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
       const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
       const chunkCoords = this.getChunkCoords(x, z);
-      const key = chunkCoords[0] + "," + chunkCoords[1];
+      const chunkKey = chunkCoords[0] + "," + chunkCoords[1];
+      console.log("chunk coords " + chunkKey);
       if (y > 0) {
         const modificationKey = x + "," + y + "," + z;
-        if (isNullOrUndefined(this.modificationKeys[key])) {
-          this.modificationKeys[key] = [];
+        if (isNullOrUndefined(this.modificationKeys[chunkKey])) {
+          this.modificationKeys[chunkKey] = [];
         }
-        this.modificationKeys[key].push([x, y, z]);
-        if (isNullOrUndefined(this.modifications[key])) {
-          this.modifications[key] = {};
+        this.modificationKeys[chunkKey].push([x, y, z]);
+        if (isNullOrUndefined(this.modifications[chunkKey])) {
+          this.modifications[chunkKey] = {};
         }
-        if (isNullOrUndefined(this.modifications[key][modificationKey])) {
-          this.modifications[key][modificationKey] = "REMOVE";
+        if (isNullOrUndefined(this.modifications[chunkKey][modificationKey])) {
+          this.modifications[chunkKey][modificationKey] = "REMOVE";
         }
         else {
-          this.modifications[key][modificationKey] = undefined;
+          this.modifications[chunkKey][modificationKey] = undefined;
         }
+        // console.log("modificationKey " + modificationKey)
+        // console.log("set modification " + this.modifications[chunkKey][modificationKey])
         this.chunk.removeCube(x, y, z);
+        const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        // console.log(y)
+        for (let i = 0; i < offset.length; i++) {
+          const neighborX = x + offset[i][0];
+          const neighborZ = z + offset[i][1];
+          const neighborKey = neighborX + "," + neighborZ;
+          const neighbors = this.chunk.cubeMap[neighborKey].sort();
+          const maxHeight = neighbors[neighbors.length - 1];
+          console.log(neighbors)
+          let removed = false;
+          const neighborChunkCoords = this.getChunkCoords(x, z);
+          const neighborChunkKey = neighborChunkCoords[0] + "," + neighborChunkCoords[1];
+        //   console.log("neighbor chunk coords " + neighborChunkKey);
+          const target = neighborX + "," + y + "," + neighborZ;
+          if (!isNullOrUndefined(this.modifications[neighborChunkKey])) {
+            console.log(this.modifications[neighborChunkKey][target]);
+            removed = this.modifications[neighborChunkKey][target] == "REMOVE";
+          }
+          console.log("maxHeight " + maxHeight);
+          console.log("removed " + removed);
+          if (maxHeight > y && !removed) {
+            console.log("add");
+            if (isNullOrUndefined(this.modificationKeys[neighborChunkKey])) {
+              this.modificationKeys[neighborChunkKey] = [];
+            }
+            this.modificationKeys[neighborChunkKey].push([neighborX, y, neighborZ]);
+            const modificationKey = neighborX + "," + y + "," + neighborZ;
+            this.modifications[neighborChunkKey][modificationKey] = "ADD";
+            this.chunk.addCube(neighborX, y, neighborZ);
+          }
+        }
+        const key = x + "," + z;
+        const newModificationKey = x + "," + (y - 1) + "," + z;
+        const removed = this.modifications[chunkKey][newModificationKey] == "REMOVE";
+        console.log("removed1 " + removed);
+        if (isNullOrUndefined(this.chunk.indexMap[key][y - 1]) && !removed) {
+          console.log("add");
+          this.modificationKeys[chunkKey].push([x, y-1, z]);
+          this.modifications[chunkKey][newModificationKey] = "ADD";
+          this.chunk.addCube(x, y - 1, z);
+        }
         this.inventory++;
         this.updateInventory();
         this.chunk.generateCubePositions();
       }
     }
-    // let attached = false;
-    // const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    // for (let i = 0; i < offset.length; i++) {
-    //   const neighborX = x + offset[i][0];
-    //   const neighborZ = z + offset[i][1];
-    //   const neighborKey = neighborX + "," + neighborZ;
-    //   const neighbors = this.chunk.cubeMap[neighborKey];
-      // let maxHeight = -Infinity;
-      // let minHeight = Infinity;
-      // console.log("y " + y)
-      // console.log(neighbors)
-      // neighbors.forEach((height) => {
-      //   minHeight = Math.min(minHeight, height);
-      // });
-      // neighbors.forEach((height) => {
-      //   if (height <= y + 1) {
-      //     maxHeight = Math.max(maxHeight, height);
-      //   }
-      // });
-      // const hasAdjacent = neighbors.find((neighborY) => neighborY == y);
-      // if (hasAdjacent) {
-      //   attached = true;
-        // console.log("direction " + offset[i])
-        // console.log("maxHeight " + maxHeight + ", minHeight " + minHeight);
-        // console.log("y " + y)
-      // }
-      // if ((maxHeight > y || minHeight > y) && !hasAdjacent && !this.removed[idx].find((cube) => cube[0] == neighborX && cube[1] == y && cube[2] == neighborZ)) {
-      //   console.log("add " + neighborX + "," + y + "," + neighborZ)
-      //   if (isNullOrUndefined(this.added[idx])) {
-      //     this.added[idx] = [];
-      //   }
-      //   this.added[idx].push([neighborX, y, neighborZ]);
-      //   this.chunk.addCube(neighborX, y, neighborZ);
-      // }
-    // }
-    // if (attached && (this.chunk.cubeMap[key].length == 0 || !this.chunk.cubeMap[key].find((height) => height < y))) {
-    //   if (isNullOrUndefined(this.added[idx])) {
-    //     this.added[idx] = [];
-    //   }
-    //   this.added[idx].push([x, y - 1, z]);
-    //   this.chunk.addCube(x, y - 1, z);
-    // }
+    
   }
 
   public placeBlock(rayDir: Vec3) {
