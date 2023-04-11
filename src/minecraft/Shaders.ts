@@ -178,21 +178,64 @@ export const blankCubeFSText = `
 
 
     void main() {
-        
-        
         float noise = perlin(uv.x, uv.y, seed, 2.0);
         float noise2 = perlin(uv.x, uv.y, seed, 4.0);
         float noise3 = perlin(uv.x, uv.y, seed, 8.0);
         float noise4 = perlin(uv.x, uv.y, seed, 16.0);
         float noise5 = perlin(uv.x, uv.y, seed, 32.0);
         float finnoise = 0.5 * noise + 0.25 * noise2 + 0.125 * noise3 + 0.0625 * noise4;
-        float val = finnoise;
-        float vala = 0.1 * finnoise + 0.1;
+        // grass texture
+        // float val = finnoise;
+        // marbled texture sorta
+        // float val = (abs(sin(8.0 * uv.x + 8.0 * uv.y + 32.0 * finnoise)) + 3.0) / 4.0;
+        // rock?
+        float val = (sin(16.0 * uv.x + 16.0 * finnoise) + sin(16.0 * uv.y + 16.0 * finnoise) + 1.0) / 2.0;
+
+        // float r = val;
+        // float g = val;
+        // float b = val;
+
+        // "grass" coloration
+        // float r = val * 0.15;
+        // float g = val;
+        // float b = val * 0.5;
+        // if (val < 0.5) {
+        //     b = val * 0.65;
+        // }
+
+        // marbled coloration
+        // float r = val;
+        // float g = val * 0.9;
+        // float b = val * 0.85;
+        // if (val < 0.85) {
+        //     r = val * 0.95;
+        //     g = val * 0.75;
+        //     b = val * 0.7;
+        // }
+    
+        // dirty rock? coloration
+        float grass = random(uv, seed);
 
 
+        float r = val * 0.35;
+        float g = val * 0.25;
+        float b = val * 0.2;
 
-        vec3 ka = vec3(vala, vala, vala);
-        vec3 kd = vec3(val, val, val);
+        // if (grass >= 0.8) {
+        //     r = val * 0.15;
+        //     g = 0.7;
+        //     b = val * 0.5;
+        // }
+        // else {
+            if (val < 0.25) {
+                r = (0.5 - val) * 0.35;
+                g = (0.5 - val) * 0.25;
+                b = (0.5 - val) * 0.2;
+            }
+        // }
+
+        vec3 ka = vec3(0.1 * r + 0.1, 0.1 * g + 0.1, 0.1 * b + 0.1);
+        vec3 kd = vec3(r, g, b);
 
         /* Compute light fall off */
         vec4 lightDirection = uLightPos - wsPos;

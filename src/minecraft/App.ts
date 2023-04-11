@@ -15,6 +15,7 @@ import { Camera } from "../lib/webglutils/Camera.js";
 import { Cube } from "./Cube.js";
 import { Chunk } from "./Chunk.js";
 import { isNullOrUndefined } from "../lib/rand-seed/helpers.js";
+import { Scene, OrthographicCamera, Texture, MeshBasicMaterial, PlaneGeometry, Mesh, WebGLRenderer } from "../lib/threejs/src/Three.js";
 
 export class MinecraftAnimation extends CanvasAnimation {
   private gui: GUI;
@@ -75,6 +76,35 @@ export class MinecraftAnimation extends CanvasAnimation {
     
     this.lightPosition = new Vec4([-1000, 1000, -1000, 1]);
     this.backgroundColor = new Vec4([0.0, 0.37254903, 0.37254903, 1.0]);    
+
+    const width = this.canvas2d.width;
+    const height = this.canvas2d.height;
+    // const hudCanvas2d = document.createElement("canvas");
+    // hudCanvas2d.width = width;
+    // hudCanvas2d.height = height;
+    // var hudBitmap = hudCanvas2d.getContext("2d") || new CanvasRenderingContext2D();
+    // hudBitmap.font = "Normal 40px Arial";
+    // hudBitmap.textAlign = 'center';
+    // hudBitmap.fillStyle = "rgba(245,245,245,0.75)";
+    // hudBitmap.fillText('Initializing...', width / 2, width / 2);
+    // var cameraHUD = new OrthographicCamera(
+    //   -width/2, width/2,
+    //   height/2, -height/2,
+    //   0, 30
+    // );
+    // const sceneHUD = new Scene();
+    // var hudTexture = new Texture(hudCanvas2d)
+    // hudTexture.needsUpdate = true;
+    // var material = new MeshBasicMaterial( {map: hudTexture } );
+    // material.transparent = true;
+    // var planeGeometry = new PlaneGeometry( width, height );
+    // var plane = new Mesh( planeGeometry, material );
+    // sceneHUD.add( plane );
+    // var renderer = new WebGLRenderer({antialias: false});
+    // renderer.setSize( width, height );
+    // renderer.autoClear = false;
+    // document.body.appendChild(renderer.domElement);
+    // renderer.render(sceneHUD, cameraHUD);
   }
 
   /**
@@ -82,9 +112,10 @@ export class MinecraftAnimation extends CanvasAnimation {
    */
   public reset(): void {    
       this.gui.reset();
-      
+      this.loadedCX = 0;
+      this.loadedCY = 0;
+      this.regenerate();
       this.playerPosition = this.gui.getCamera().pos();
-      
   }
   
   
@@ -269,6 +300,41 @@ export class MinecraftAnimation extends CanvasAnimation {
     }
   }
 
+  private getChunkCoords(x: number, z: number): [number, number] {
+    let cX: number = NaN;
+    let cZ: number = NaN;
+    if(x < 0)
+    {
+      cX = Math.ceil((x - 32) / 64);
+    }
+    else cX = Math.floor((x + 32) / 64);
+    if(z < 0)
+    {
+      cZ = Math.ceil((z - 32) / 64);
+    }
+    else cZ = Math.floor((z + 32) / 64);
+    return [cX, cZ];
+  }
+
+  private regenerate() {
+    this.chunk = new Chunk(this.loadedCX, this.loadedCY, 64, true, true);
+    const offset = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1], [1, -1], [1, 0], [1, 1]]
+    for (let i = 0; i < offset.length; i++) {
+      const key = (this.loadedCX + offset[i][0]) + "," + (this.loadedCY + offset[i][1]);
+      if (!isNullOrUndefined(this.removed[key])) {
+        this.removed[key].forEach((cube) => {
+          this.chunk.removeCube(cube[0], cube[1], cube[2]);
+        });
+      }
+      if (!isNullOrUndefined(this.added[key])) {
+        this.added[key].forEach((cube) => {
+          this.chunk.addCube(cube[0], cube[1], cube[2]);
+        });
+      }
+    }
+    this.chunk.generateCubePositions();
+  }
+
   /**
    * Draws a single frame
    *
@@ -277,39 +343,14 @@ export class MinecraftAnimation extends CanvasAnimation {
     //TODO: Logic for a rudimentary walking simulator. Check for collisions and reject attempts to walk into a cube. Handle gravity, jumping, and loading of new chunks when necessary.
     this.move();
     this.gui.getCamera().setPos(this.playerPosition);
-    if(this.playerPosition.x < 0)
-    {
-      this.playerCX = Math.ceil((this.playerPosition.x - 32) / 64);
-    }
-    else this.playerCX = Math.floor((this.playerPosition.x + 32) / 64);
-    if(this.playerPosition.z < 0)
-    {
-      this.playerCY = Math.ceil((this.playerPosition.z - 32) / 64);
-    }
-    else this.playerCY = Math.floor((this.playerPosition.z + 32) / 64);
-
+    const chunkCoords = this.getChunkCoords(this.playerPosition.x, this.playerPosition.z);
+    this.playerCX = chunkCoords[0];
+    this.playerCY = chunkCoords[1];
     if(this.playerCX != this.loadedCX || this.playerCY != this.loadedCY)
     {
       this.loadedCX = this.playerCX;
       this.loadedCY = this.playerCY;
-      this.chunk = new Chunk(this.loadedCX, this.loadedCY, 64, true, true);
-      // console.log("x " + this.playerCX);
-      // console.log("y " + this.playerCY);
-      // console.log("px " + this.playerPosition.x);
-      // console.log("py " + this.playerPosition.z);
-      const idx = this.loadedCY * 3 + this.loadedCX;
-      if (!isNullOrUndefined(this.removed[idx])) {
-        this.removed[idx].forEach((cube) => {
-          this.chunk.removeCube(cube[0], cube[1], cube[2]);
-        });
-      }
-      if (!isNullOrUndefined(this.added[idx])) {
-        this.added[idx].forEach((cube) => {
-          this.chunk.addCube(cube[0], cube[1], cube[2]);
-        });
-      }
-      this.chunk.generateCubePositions();
-
+      this.regenerate();
     }
 
     // Drawing
@@ -395,12 +436,13 @@ export class MinecraftAnimation extends CanvasAnimation {
       const x = this.chunk.cubePositions()[intersectedCubeIndex + 0];
       const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
       const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
-      const idx = this.loadedCY * 3 + this.loadedCX;
+      const chunkCoords = this.getChunkCoords(x, z);
+      const key = chunkCoords[0] + "," + chunkCoords[1];
       if (y > 0) {
-        if (isNullOrUndefined(this.removed[idx])) {
-          this.removed[idx] = [];
+        if (isNullOrUndefined(this.removed[key])) {
+          this.removed[key] = [];
         }
-        this.removed[idx].push([x, y, z]);
+        this.removed[key].push([x, y, z]);
         this.chunk.removeCube(x, y, z);
         this.chunk.generateCubePositions();
       }
@@ -480,15 +522,18 @@ export class MinecraftAnimation extends CanvasAnimation {
       const newX = x + offset[0];
       const newY = y + offset[1];
       const newZ = z + offset[2];
-      const idx = this.loadedCY * 3 + this.loadedCX;
-      const key = newX + "," + newZ;
-      if (isNullOrUndefined(this.added[idx])) {
-        this.added[idx] = [];
+      const chunkCoords = this.getChunkCoords(newX, newZ);
+      const key = chunkCoords[0] + "," + chunkCoords[1];
+      if (isNullOrUndefined(this.added[key])) {
+        this.added[key] = [];
       }
-      this.added[idx].push([newX, newY, newZ]);
+      this.added[key].push([newX, newY, newZ]);
       this.chunk.addCube(newX, newY, newZ);
       this.chunk.generateCubePositions();
 
+      if (this.playerPosition.y - 2 < newY + 0.5) {
+        this.playerPosition.y++;
+      }
     }
   }
   
