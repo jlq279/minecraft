@@ -329,6 +329,7 @@ export class Chunk {
 
     public generateCubePositions() {
         this.cubePositionsF32 = new Float32Array(this.cubes * 4);
+        this.cubeType = new Float32Array(this.cubes);
         let idx = 0;
         this.indexMap = {};
         for(let i=0; i<this.size*3; i++)
@@ -358,7 +359,6 @@ export class Chunk {
 
     public removeCube(x: number, y: number, z: number) {
         const key = x + "," + z;
-        console.log(key)
         const index = this.cubeMap[key].findIndex((height) => height == y);
         this.cubeMap[key].splice(index, 1);
         this.cubes--;
