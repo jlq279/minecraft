@@ -641,14 +641,6 @@ export class MinecraftAnimation extends CanvasAnimation {
         const chunkCoords = this.getChunkCoords(newX, newZ);
         const key = chunkCoords[0] + "," + chunkCoords[1];
         if (Math.sqrt(Math.pow(intersectionPoint.x - this.playerPosition.x, 2) + Math.pow(intersectionPoint.z - this.playerPosition.z, 2)) >= 0.4) {
-          if (this.on(newX, newZ)) {
-            if (this.playerPosition.y > newY - 0.5) {
-              return;
-            }
-            if (this.playerPosition.y - 2 < newY + 0.5) {
-              this.playerPosition.y++;
-            }
-          }
           this.chunk.addCube(newX, newY, newZ);
           let biome: number;
           switch (this.selectedBlockType) {
