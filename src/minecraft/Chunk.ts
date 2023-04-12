@@ -96,8 +96,8 @@ export class Chunk {
             for(let j=0; j<this.size * 3; j++)
             {
                 const height = noise[i*this.size * 3 + j];
-                this.cubes += height;
-                for (let k = 1; k <= height; k++) {
+                this.cubes += Math.min(height, 10);
+                for (let k = 1; k <= Math.min(height, 10); k++) {
                     extraCubes.push([i, j, height - k, biomes[i * this.size * 3 + j]])
                 }
                 // const heightDifference = this.getMaxHeightDifference(noise, i, j);
