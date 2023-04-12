@@ -4,6 +4,8 @@ export const blankCubeVSText = `
     uniform vec4 uLightPos;    
     uniform mat4 uView;
     uniform mat4 uProj;
+
+    uniform float time;
     
     attribute vec4 aNorm;
     attribute vec4 aVertPos;
@@ -29,6 +31,10 @@ export const blankCubeVSText = `
         uv = aUV;
         float val = aOffset.x * 100.0 + aOffset.y * 10.0 + aOffset.z + normal.x * 0.1 + normal.y * 0.01 + normal.z * 0.001;
         seed = sin(val);
+        vec2 offset = vec2(sin(time/1000.0), cos(time/1000.0)) * 0.1;
+        if(type == 10.0) {
+            uv += offset;
+        }
         type2 = type;
 
     }
@@ -38,6 +44,7 @@ export const blankCubeFSText = `
     precision mediump float;
 
     uniform vec4 uLightPos;
+    uniform float time;
     
     varying vec4 normal;
     varying vec4 wsPos;
@@ -122,7 +129,8 @@ export const blankCubeFSText = `
     }
 
     vec3 marble(float noise) {
-        float val = (abs(sin(8.0 * uv.x + 8.0 * uv.y + 32.0 * noise)) + 3.0) / 4.0;
+        vec2 offset = vec2(cos(time/1000.0), sin(time/1000.0)) * 0.1;
+        float val = (abs(sin(8.0 * (uv.x + 13.0 * noise * offset.x) + 8.0 * (uv.y + 2.5 * noise * offset.y) + 32.0 * noise)) + 3.0) / 4.0;
         float r = val;
         float g = val * 0.9;
         float b = val * 0.85;
@@ -147,10 +155,7 @@ export const blankCubeFSText = `
         float noise5 = perlin(uv.x, uv.y, seed, 32.0);
         float finnoise = 0.5 * noise + 0.25 * noise2 + 0.125 * noise3 + 0.0625 * noise4;
         vec3 color = vec3(0.5, 0.5, 0.5);
-        if(type2 == 10.0) 
-        {
-            color = marble(finnoise);
-        }
+        if(type2 == 10.0) color = marble(finnoise);
         else if (type2 == 5.0) color = stone(finnoise);
         else if(type2 == 3.0) color = grassBlk(finnoise);
         else color = dirt(finnoise);
