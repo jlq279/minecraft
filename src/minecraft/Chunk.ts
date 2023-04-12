@@ -91,7 +91,7 @@ export class Chunk {
         let rng = new Rand(seed);
         const noise = this.generateValueNoise(rng);
         const biomes = this.generateBiomeNoise();
-        const extraCubes: [number, number, number][] = [];
+        const extraCubes: [number, number, number, number][] = [];
         for(let i=0; i<this.size * 3; i++) {
             for(let j=0; j<this.size * 3; j++)
             {
@@ -104,7 +104,7 @@ export class Chunk {
                 if (heightDifference > 1) {
                     this.cubes += heightDifference - 1;
                     for (let k = 1; k < heightDifference; k++) {
-                        extraCubes.push([i, j, height - k])
+                        extraCubes.push([i, j, height - k, biomes[i * this.size * 3 + j]])
                     }
                 }
             }
@@ -134,7 +134,7 @@ export class Chunk {
         }
         
         for (let idx = 4 * this.size * this.size * 9; idx < 4 * this.cubes; idx+=4) {
-            const extraCube = extraCubes.pop() || [0, 0, 0];
+            const extraCube = extraCubes.pop() || [0, 0, 0, 0];
             const i = extraCube[0];
             const j = extraCube[1];
             const height = extraCube[2];
@@ -146,7 +146,7 @@ export class Chunk {
             const key = (this.topleftx + j) + "," + (this.toplefty + i);
             this.cubeMap[key].push(height);
             this.indexMap[key][height] = idx;
-            this.cubeTypeMap[key][height] = 0;
+            this.cubeTypeMap[key][height] = extraCube[3];
         }
         // console.log(this.cubeType.toLocaleString());
     }
@@ -202,11 +202,29 @@ export class Chunk {
         const upbiome3 = this.upsample(upbiome2);
         const finbiome = new Float32Array(this.size * this.size * 9);
         // console.log("noise here: ");
-        
+        let rngs: Rand[] = [];
+        for(let y = this.y - 1; y <= this.y + 1; y++)
+        {
+            for(let x = this.x - 1; x <= this.x + 1; x++)
+            {
+                rngs.push(new Rand(x + " " + y));
+            }
+        }
+
         for (let i = 0; i < 192; i++) {
             for (let j = 0; j < 192; j++) {
                 finbiome[i*192 + j] =  0.5 *upbiome3[i*192 + j] + 0.25 * upbiome2[Math.trunc(i/2)*96 + Math.trunc(j/2)] + 0.125 * upbiome[Math.trunc(i/4)*48 + Math.trunc(j/4)] + 0.125 * this.superBiomes[Math.trunc(i/8)*24 + Math.trunc(j/8)];
-            }
+                let indx = Math.floor(j / 64) + Math.floor(i / 64) * 3;
+                let val2 = rngs[indx].next();
+                if(finbiome[i * 192 + j] >  4.5) 
+                {
+                    if(val2 * 10.0 < 9.5) finbiome[i * 192 + j] = 5;
+                    else finbiome[i * 192 + j] = 10;
+                }
+                else if(finbiome[i * 192 + j] > 2.0) finbiome[i * 192 + j] = 3;
+                else finbiome[i * 192 + j] = 1;
+
+            }   
         }
         // console.log(finbiome.toLocaleString());
         return finbiome;

@@ -82,6 +82,7 @@ export class MinecraftAnimation extends CanvasAnimation {
 
     this.blankCubeRenderPass = new RenderPass(gl, blankCubeVSText, blankCubeFSText);
     this.cubeGeometry = new Cube();
+    this.regenerate();
     this.initBlankCube();
     
     this.lightPosition = new Vec4([-1000, 1000, -1000, 1]);
