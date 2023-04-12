@@ -16,6 +16,7 @@ export const blankCubeVSText = `
     varying vec2 uv;
     varying float seed;
     varying float type2;
+    varying vec4 worldPos;
 
     
 
@@ -23,6 +24,7 @@ export const blankCubeVSText = `
 
         gl_Position = uProj * uView * (aVertPos + aOffset);
         wsPos = aVertPos + aOffset;
+        worldPos = aOffset;
         normal = normalize(aNorm);
         uv = aUV;
         float val = aOffset.x * 100.0 + aOffset.y * 10.0 + aOffset.z + normal.x * 0.1 + normal.y * 0.01 + normal.z * 0.001;
@@ -42,6 +44,7 @@ export const blankCubeFSText = `
     varying vec2 uv;
     varying float seed;
     varying float type2;
+    varying vec4 worldPos;
     
     float random (in vec2 pt, in float seed) {
         return fract(sin( (seed + dot(pt.xy, vec2(12.9898,78.233))))*43758.5453123);
@@ -215,6 +218,11 @@ export const blankCubeFSText = `
         return vec3(r, g, b);
     }
 
+    vec3 stone(float noise) 
+    {
+        return vec3(noise, noise, noise);
+    }
+
     void main() {
         float noise = perlin(uv.x, uv.y, seed, 2.0);
         float noise2 = perlin(uv.x, uv.y, seed, 4.0);
@@ -271,11 +279,15 @@ export const blankCubeFSText = `
                 b = (0.5 - val) * 0.2;
             }
         // }
-
+        float val2 = random(worldPos.xy, seed);
         vec3 color = vec3(0.5, 0.5, 0.5);
-        if(type2 == 8.0) color = marble(finnoise);
-        else if(type2 == 5.0) color = dirt(finnoise);
-        else color = grassBlk(finnoise);
+        if(type2 == 10.0) 
+        {
+            color = marble(finnoise);
+        }
+        else if (type2 == 5.0) color = stone(finnoise);
+        else if(type2 == 3.0) color = grassBlk(finnoise);
+        else color = dirt(finnoise);
         vec3 ka = 0.1 * color;
         vec3 kd = color;
 
