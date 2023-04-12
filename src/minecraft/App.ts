@@ -15,6 +15,72 @@ import { Cube } from "./Cube.js";
 import { Chunk } from "./Chunk.js";
 import { isNullOrUndefined } from "../lib/rand-seed/helpers.js";
 
+export class InventoryBlock {
+  private ctx: CanvasRenderingContext2D;
+  private x: number;
+  private y: number;
+  private inventory: number;
+  private type: "GRASS" | "DIRT" | "MARBLE";
+  private image: HTMLImageElement;
+  private loaded: boolean = false;
+  private selected: boolean = false;
+  constructor(ctx: CanvasRenderingContext2D, x: number, y: number, type: "GRASS" | "DIRT" | "MARBLE", src: string, size: number) {
+    this.ctx = ctx;
+    this.x = x;
+    this.y = y;
+    this.inventory = 0;
+    this.type = type;
+    this.image = new Image(size, size);
+    this.image.src = src;
+    this.image.onload = (e) => {
+      this.draw();
+      this.loaded = true;
+    };
+  }
+  public updateInventory(count: number) {
+    this.inventory = count;
+  }
+  public hover(mouseX: number, mouseY: number): boolean {
+    if (mouseX >= this.x && mouseX < this.x + this.image.width && mouseY >= this.y && mouseY < this.y + this.image.height) {
+      this.drawBorder();
+      return true;
+    }
+    else if (!this.selected) {
+      this.clearBorder();
+    }
+    return false;
+  }
+  public imageLoaded() {
+    return this.loaded;
+  }
+  public draw() {
+    this.ctx.drawImage(this.image, this.x, this.y, this.image.width, this.image.height);
+    this.ctx.fillText(`${this.inventory}`, this.x + 78, this.y + 90);
+  }
+  public drawBorder() {
+    this.ctx.strokeStyle = "rgba(255.0, 0, 0, 1.0)";
+    this.ctx.strokeRect(this.x, this.y, this.image.width, this.image.height);
+  }
+  public clearBorder() {
+    this.ctx.clearRect(this.x-1, this.y-1, this.image.width+2, this.image.height+2);
+    this.draw();
+  }
+  public select() {
+    this.selected = true;
+    this.drawBorder();
+  }
+  public deselect() {
+    this.selected = false;
+    this.clearBorder();
+  }
+  public getType() {
+    return this.type;
+  }
+  public getSelected() {
+    return this.selected;
+  }
+}
+
 export class MinecraftAnimation extends CanvasAnimation {
   private gui: GUI;
   
@@ -43,30 +109,51 @@ export class MinecraftAnimation extends CanvasAnimation {
 
   private modificationKeys:{[chunk: string]: [number, number, number][]} = {};
   private modifications:{[chunk: string]: {[xyz: string] : "ADD" | "REMOVE" | undefined}} = {};
-  private inventory: number = 0;
+  private inventory: {[blockType: string]: number} = {};
+  private selectedBlockType: "GRASS" | "DIRT" | "MARBLE" | undefined = undefined;
+  private inventoryBlocks: InventoryBlock[];
 
   private updateInventory() {
     const hudContext = this.canvas2d.getContext("2d") || new CanvasRenderingContext2D();
     hudContext.clearRect(0, 0, this.canvas2d.width, this.canvas2d.height);
     hudContext.fillStyle = "rgba(255.0, 255.0, 255.0, 0.5)";
-    hudContext.fillRect(0, 0, 500, 300)
+    hudContext.fillRect(0, 0, 408, 200)
     hudContext.fillStyle = "rgba(1.0, 1.0, 1.0, 1.0)";
-    hudContext.font = "48px sans-serif"
-    hudContext.fillText("Inventory", 60, 96);
-    hudContext.font = "36px sans-serif"
-    hudContext.fillText(`Regular blocks: ${this.inventory}`, 60, 144);
+    hudContext.font = "36px monospace"
+    let x = 48;
+    let y = 48;
+    hudContext.fillText("Inventory", x, y);
+    hudContext.font = "24px monospace"
+    this.inventoryBlocks.forEach((inventoryBlock) => {
+      inventoryBlock.updateInventory(this.inventory[inventoryBlock.getType()]);
+      inventoryBlock.draw();
+      if (inventoryBlock.getSelected()) {
+        inventoryBlock.drawBorder();
+      }
+    });
   }
-  
   
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
 
     this.canvas2d = document.getElementById("textCanvas") as HTMLCanvasElement;
+    this.inventory["GRASS"] = 0;
+    this.inventory["DIRT"] = 0;
+    this.inventory["MARBLE"] = 0;
+    const x = 48;
+    const y = 72;
+    const size = 96;
+    const margin = 12;
+    const ctx = this.canvas2d.getContext("2d") || new CanvasRenderingContext2D();
+    const grassBlock = new InventoryBlock(ctx, x, y, "GRASS", "/static/assets/grassblock.png", size);
+    const dirtBlock = new InventoryBlock(ctx, x + size + margin, y, "DIRT", "/static/assets/dirtblock.png", size);
+    const marbleBlock = new InventoryBlock(ctx, x + (size + margin) * 2, y, "MARBLE", "/static/assets/marbleblock.png", size);
+    this.inventoryBlocks = [grassBlock, dirtBlock, marbleBlock];
     this.updateInventory();
     this.ctx = Debugger.makeDebugContext(this.ctx);
     let gl = this.ctx;
         
-    this.gui = new GUI(this.canvas2d, this);
+    this.gui = new GUI(this.canvas2d, this, this.inventoryBlocks);
     this.playerPosition = this.gui.getCamera().pos();
 
     this.verticalVelocity = 0;
@@ -447,9 +534,9 @@ export class MinecraftAnimation extends CanvasAnimation {
       const x = this.chunk.cubePositions()[intersectedCubeIndex + 0];
       const y = this.chunk.cubePositions()[intersectedCubeIndex + 1];
       const z = this.chunk.cubePositions()[intersectedCubeIndex + 2];
+      const key = x + "," + z;
       const chunkCoords = this.getChunkCoords(x, z);
       const chunkKey = chunkCoords[0] + "," + chunkCoords[1];
-      console.log("chunk coords " + chunkKey);
       if (y > 0) {
         const modificationKey = x + "," + y + "," + z;
         if (isNullOrUndefined(this.modificationKeys[chunkKey])) {
@@ -465,51 +552,12 @@ export class MinecraftAnimation extends CanvasAnimation {
         else {
           this.modifications[chunkKey][modificationKey] = undefined;
         }
-        // console.log("modificationKey " + modificationKey)
-        // console.log("set modification " + this.modifications[chunkKey][modificationKey])
         this.chunk.removeCube(x, y, z);
-        const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        // console.log(y)
-        for (let i = 0; i < offset.length; i++) {
-          const neighborX = x + offset[i][0];
-          const neighborZ = z + offset[i][1];
-          const neighborKey = neighborX + "," + neighborZ;
-          const neighbors = this.chunk.cubeMap[neighborKey].sort();
-          const maxHeight = neighbors[neighbors.length - 1];
-          console.log(neighbors)
-          let removed = false;
-          const neighborChunkCoords = this.getChunkCoords(x, z);
-          const neighborChunkKey = neighborChunkCoords[0] + "," + neighborChunkCoords[1];
-        //   console.log("neighbor chunk coords " + neighborChunkKey);
-          const target = neighborX + "," + y + "," + neighborZ;
-          if (!isNullOrUndefined(this.modifications[neighborChunkKey])) {
-            console.log(this.modifications[neighborChunkKey][target]);
-            removed = this.modifications[neighborChunkKey][target] == "REMOVE";
-          }
-          console.log("maxHeight " + maxHeight);
-          console.log("removed " + removed);
-          if (maxHeight > y && !removed) {
-            console.log("add");
-            if (isNullOrUndefined(this.modificationKeys[neighborChunkKey])) {
-              this.modificationKeys[neighborChunkKey] = [];
-            }
-            this.modificationKeys[neighborChunkKey].push([neighborX, y, neighborZ]);
-            const modificationKey = neighborX + "," + y + "," + neighborZ;
-            this.modifications[neighborChunkKey][modificationKey] = "ADD";
-            this.chunk.addCube(neighborX, y, neighborZ);
-          }
-        }
-        const key = x + "," + z;
-        const newModificationKey = x + "," + (y - 1) + "," + z;
-        const removed = this.modifications[chunkKey][newModificationKey] == "REMOVE";
-        console.log("removed1 " + removed);
-        if (isNullOrUndefined(this.chunk.indexMap[key][y - 1]) && !removed) {
-          console.log("add");
-          this.modificationKeys[chunkKey].push([x, y-1, z]);
-          this.modifications[chunkKey][newModificationKey] = "ADD";
-          this.chunk.addCube(x, y - 1, z);
-        }
-        this.inventory++;
+        const biome = this.chunk.cubeTypeMap[key][y];
+        if (biome >  5.0) this.inventory["MARBLE"]++;
+        else if(biome > 3.0) this.inventory["DIRT"]++;
+        else this.inventory["GRASS"]++;
+        
         this.updateInventory();
         this.chunk.generateCubePositions();
       }
@@ -517,8 +565,20 @@ export class MinecraftAnimation extends CanvasAnimation {
     
   }
 
+  public selectBlockType(blockType: "GRASS"|"DIRT"|"MARBLE") {
+    this.selectedBlockType = blockType;
+    this.inventoryBlocks.forEach((inventoryBlock) => {
+      if (inventoryBlock.getType() == this.selectedBlockType) {
+        inventoryBlock.select();
+      }
+      else {
+        inventoryBlock.deselect();
+      }
+    })
+  }
+
   public placeBlock(rayDir: Vec3) {
-    if (this.inventory > 0) {
+    if (!isNullOrUndefined(this.selectedBlockType) && this.inventory[this.selectedBlockType] > 0) {
       const cubeIntersection = this.intersectedCube(rayDir)
       const intersectedCubeIndex = cubeIntersection[0];
       if (!Number.isNaN(intersectedCubeIndex)) {
@@ -575,7 +635,18 @@ export class MinecraftAnimation extends CanvasAnimation {
             this.modifications[key][modificationKey] = undefined;
           }
           this.chunk.addCube(newX, newY, newZ);
-          this.inventory--;
+          switch (this.selectedBlockType) {
+            case "GRASS": this.chunk.cubeTypeMap[newX + "," + newZ][newY] = 0; break;
+            case "DIRT": this.chunk.cubeTypeMap[newX + "," + newZ][newY] = 5; break;
+            case "MARBLE": this.chunk.cubeTypeMap[newX + "," + newZ][newY] = 8; break;
+          }
+          this.inventory[this.selectedBlockType]--;
+          if (this.inventory[this.selectedBlockType] == 0) {
+            this.inventoryBlocks.forEach((inventoryBlock) => {
+              inventoryBlock.deselect();
+            })
+            this.selectedBlockType = undefined;
+          }
           this.updateInventory();
           this.chunk.generateCubePositions();
         }

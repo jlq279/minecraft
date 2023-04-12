@@ -96,17 +96,17 @@ export class Chunk {
             for(let j=0; j<this.size * 3; j++)
             {
                 const height = noise[i*this.size * 3 + j];
-                // this.cubes += height;
-                // for (let k = 1; k <= height; k++) {
-                //     extraCubes.push([i, j, height - k])
-                // }
-                const heightDifference = this.getMaxHeightDifference(noise, i, j);
-                if (heightDifference > 1) {
-                    this.cubes += heightDifference - 1;
-                    for (let k = 1; k < heightDifference; k++) {
-                        extraCubes.push([i, j, height - k])
-                    }
+                this.cubes += height;
+                for (let k = 1; k <= height; k++) {
+                    extraCubes.push([i, j, height - k])
                 }
+                // const heightDifference = this.getMaxHeightDifference(noise, i, j);
+                // if (heightDifference > 1) {
+                //     this.cubes += heightDifference - 1;
+                //     for (let k = 1; k < heightDifference; k++) {
+                //         extraCubes.push([i, j, height - k])
+                //     }
+                // }
             }
         }
 
@@ -340,6 +340,7 @@ export class Chunk {
 
     public removeCube(x: number, y: number, z: number) {
         const key = x + "," + z;
+        console.log(key)
         const index = this.cubeMap[key].findIndex((height) => height == y);
         this.cubeMap[key].splice(index, 1);
         this.cubes--;

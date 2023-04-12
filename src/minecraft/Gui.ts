@@ -1,6 +1,6 @@
 import { Camera } from "../lib/webglutils/Camera.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
-import { MinecraftAnimation } from "./App.js";
+import { InventoryBlock, MinecraftAnimation } from "./App.js";
 import { Mat4, Vec3, Vec4, Vec2, Mat2, Quat } from "../lib/TSM.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 
@@ -42,18 +42,22 @@ export class GUI implements IGUI {
   private Sdown: boolean;
   private Ddown: boolean;
   private mouseRay: Vec3;
+  private inventoryBlocks: InventoryBlock[];
+  private hover: boolean[];
   /**
    *
    * @param canvas required to get the width and height of the canvas
    * @param animation required as a back pointer for some of the controls
    */
-  constructor(canvas: HTMLCanvasElement, animation: MinecraftAnimation) {
+  constructor(canvas: HTMLCanvasElement, animation: MinecraftAnimation, inventoryBlocks: InventoryBlock[]) {
     this.height = canvas.height;
     this.width = canvas.width;
     this.prevX = 0;
     this.prevY = 0;
     this.dragging = false;
-    
+    this.inventoryBlocks = inventoryBlocks;
+    this.hover = [];
+    inventoryBlocks.forEach((_) => this.hover.push(false));
     this.animation = animation;
     
     this.reset();
@@ -111,6 +115,11 @@ export class GUI implements IGUI {
   }
   
   public dragStart(mouse: MouseEvent): void {
+    this.hover.forEach((hovering, index) => {
+      if (hovering) {
+        this.animation.selectBlockType(this.inventoryBlocks[index].getType());
+      }
+    });
     this.prevX = mouse.screenX;
     this.prevY = mouse.screenY;
     this.dragging = true;
@@ -128,6 +137,7 @@ export class GUI implements IGUI {
   public drag(mouse: MouseEvent): void {
     let x = mouse.offsetX;
     let y = mouse.offsetY;
+    this.inventoryBlocks.forEach((inventoryBlock, index) => this.hover[index] = inventoryBlock.hover(x, y));
     const dx = mouse.screenX - this.prevX;
     const dy = mouse.screenY - this.prevY;
     this.prevX = mouse.screenX;
