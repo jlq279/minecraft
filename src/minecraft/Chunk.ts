@@ -13,10 +13,18 @@ export class superChunk {
     private cubePoses: Float32Array[];
     private cubeTypes: Float32Array[];
     private cubes: number;
+    private cubePositionsF32: Float32Array;
+    private cubeTypesF32: Float32Array;
+    public cubeMap: {[key:string] : number[]} = {};
+    public indexMap: {[key:string] : {[height:number]: number}} = {};
+    public cubeTypeMap: {[key:string] : {[height:number]: number}} = {};
+    public topleftx: number;
+    public toplefty: number;
     
 
     constructor(x: number, y: number)
     {
+        // console.log(`x ${x} y ${y}`);
         this.newNoise = new Float32Array(56 * 56);
         this.newBiomes = new Float32Array(56 * 56);
         this.ogNoise = new Float32Array(8 * 8);
@@ -24,9 +32,12 @@ export class superChunk {
 
         let input = new Float32Array(10*10);
 
+        this.topleftx = (x - 2) * (64) - 32;
+        this.toplefty = (y - 2) * (64) - 32;
+
         for(let childx = x - 3; childx <= x + 3; childx++)
         {
-            for(let childy = y - 3; y <= y + 3; childy++) 
+            for(let childy = y - 3; childy <= y + 3; childy++) 
             {
                 const seed = new String(childx + ", " + childy).toString();
                 //console.log(seed);
@@ -37,24 +48,25 @@ export class superChunk {
                 {
                     for(let y2 = 0; y2 < 8; y2++)
                     {
-                        let index = this.xyToLin((childx + 3 + x2), (childy + 3 + y2), 56);
+                        let index = this.xyToLin(((childx + 3)*8 + x2), ((childy + 3) * 8 + y2), 56);
                         let index2 = this.xyToLin(x2, y2, 8);
                         this.newNoise[index] = this.ogNoise[index2];
                         this.newBiomes[index] = this.ogBiomes[index2];
+                        // console.log(`Chunk ${childx} ${childy} ${this.ogNoise.toLocaleString()}`);                
                     }
                 } 
             }
         }
 
+        
         this.cubes = 0;
-        this.cubePoses = new Float32Array[25];
-        this.cubeTypes = new Float32Array[25];
+       
 
 
         //assumption: at this point, newNoise has been created
         for(let childx = x - 2; childx <= x + 2; childx++)
         {
-            for(let childy = y-2; y <= y+ 2; childy++)
+            for(let childy = y-2; childy <= y+ 2; childy++)
             {
                 let toFeed = new Float32Array(10 * 10);
                 let toFeedBiome = new Float32Array(10 * 10);
@@ -75,19 +87,19 @@ export class superChunk {
                 let idx = this.xyToLin(childx + 2, childy + 2, 5);
                 
                 let full = true;
+                // console.log("current cubes " + this.cubes);
+                let child: Chunk = new Chunk(toFeed, toFeedBiome, full, childx, childy, this.cubeMap, this.indexMap, this.cubeTypeMap, this.cubes); 
                 
-                let child: Chunk = new Chunk(toFeed, toFeedBiome, full, childx, childy); 
                 
+
                 this.cubes += child.numCubes();
+                // console.log("Child cubes: "  + child.numCubes());
 
-                this.cubePoses[idx] = child.cubePositions();
-
-                this.cubeTypes[idx] = child.types();
 
             }
         }
 
-        
+        this.generateCubePositions();
     }
 
     
@@ -320,7 +332,7 @@ export class superChunk {
 
                 
                 let biomeData = this.detBiome(x, y, i, j);
-                const height = Math.floor(biomeData[1] * rng.next() + biomeData[2]);
+                const height = Math.floor(biomeData[0] * rng.next() + biomeData[1]);
 
 
                 const idx = 8 * i + j;
@@ -333,41 +345,45 @@ export class superChunk {
         return whiteNoise;
     }
     
+    public generateCubePositions() {
+        this.cubePositionsF32 = new Float32Array(this.cubes * 4);
+        this.cubeTypesF32 = new Float32Array(this.cubes);
+        let idx = 0;
+        this.indexMap = {};
+        for(let i=0; i<64* 5; i++)
+        {
+            for(let j=0; j<64*5; j++)
+            {
+                
+                    const x = this.topleftx + j;
+                    const z = this.toplefty + i;
+                    const key = x + "," + z;
+                    this.indexMap[key] = {};
+                    
+                    this.cubeMap[key].forEach((y) => {
+                
+                    this.cubePositionsF32[4 * idx + 0] = x;
+                    this.cubePositionsF32[4 * idx + 1] = y;
+                    this.cubePositionsF32[4 * idx + 2] = z;
+                    this.cubePositionsF32[4 * idx + 3] = 0;
+                    this.indexMap[key][y] = 4 * idx;
+                    this.cubeTypesF32[idx] = this.cubeTypeMap[key][y];
+                    idx++;
+                
+                    });
+            }
+        }
+    }
+
     public numCubes(): number {
         return this.cubes;
     }
 
     public cubePositions(): Float32Array {
-        var temp:Float32Array = new Float32Array(this.cubes * 4);
-        let sum = 0;
-        for(let i = 0; i < 5; i++)
-        {
-            for(let j = 0; j < 5; j++)
-            {
-                for(let k = 0; k < this.cubePoses[i + j*5].length; k++)
-                {
-                    temp[sum + k] = this.cubePoses[i + j*5][k];
-                }
-                sum += this.cubePoses[i + j* 5].length;
-            }
-        }
-        return temp;
+        return this.cubePositionsF32;
     }
     public types(): Float32Array {
-        var temp:Float32Array = new Float32Array(this.cubes);
-        let sum = 0;
-        for(let i = 0; i < 5; i++)
-        {
-            for(let j = 0; j < 5; j++)
-            {
-                for(let k = 0; k < this.cubeTypes[i + j*5].length; k++)
-                {
-                    temp[sum + k] = this.cubeTypes[i + j*5][k];
-                }
-                sum += this.cubeTypes[i + j* 5].length;
-            }
-        }
-        return temp;
+        return this.cubeTypesF32;
     }
 
 }
@@ -397,6 +413,7 @@ export class Chunk {
     public amp: number;
     public center: number;
     public biome: number;
+    public prio: number;
 
     
     
@@ -458,9 +475,14 @@ export class Chunk {
     
     
     
-    constructor(lowFreq: Float32Array, lowFreqBiomes: Float32Array, full: boolean, x: number, y: number) {
+    constructor(lowFreq: Float32Array, lowFreqBiomes: Float32Array, full: boolean, x: number, y: number, pMap: {[key:string] : number[]}, pMap2: {[key:string] : {[height:number]: number}}, pMap3: {[key:string] : {[height:number]: number}}, prior: number) {
 
-       
+        this.cubeMap = pMap;
+        this.indexMap = pMap2;
+        this.cubeTypeMap = pMap3;
+        this.prio = prior;
+        // console.log("chunk xy: " + x +", " + y);
+        // console.log("prior: " + prior);
         this.cubes = 64*64;
         this.x = x;
         this.y = y;
@@ -471,13 +493,17 @@ export class Chunk {
     }
     
     private generateCubes(hNoise: Float32Array, bNoise: Float32Array) {
-        this.topleftx = (this.x - 1) * (64) - 32;
-        this.toplefty = (this.y - 1) * (64) - 32;
+        this.topleftx = (this.x)*(64) - 32;
+        this.toplefty = (this.y) * (64) - 32;
+
+       
         
         //TODO: The real landscape-generation logic. The example code below shows you how to use the pseudorandom number generator to create a few cubes.
         const noise = this.generateValueNoise(hNoise);
         const biomes = this.generateBiomeNoise(bNoise);
+        // console.log("noise: " + noise.length);
         const extraCubes: [number, number, number, number][] = [];
+        // console.log("1 " + this.cubes);
         for(let i=0; i < 64; i++) {
             for(let j=0; j < 64; j++)
             {
@@ -496,7 +522,7 @@ export class Chunk {
                 }
             }
         }
-
+        // console.log("2 " + this.cubes);
         this.cubePositionsF32 = new Float32Array(this.cubes * 4);
         this.cubeType = new Float32Array(this.cubes);
         // console.log(this.biome);
@@ -512,14 +538,15 @@ export class Chunk {
                 this.cubePositionsF32[4*idx + 3] = 0;
 
                 const key = (this.topleftx + j) + "," + (this.toplefty + i);
+               
                 this.cubeMap[key] = [height];
                 this.indexMap[key] = {};
-                this.indexMap[key][height] = 4*idx;
+                this.indexMap[key][height] = 4*(idx + this.prio);
                 this.cubeTypeMap[key] = {};
                 this.cubeTypeMap[key][height] = biomes[idx];
             }
         }
-        
+        // console.log("3 " + this.cubes);
         for (let idx = 4 * 64 * 64; idx < 4 * this.cubes; idx+=4) {
             const extraCube = extraCubes.pop() || [0, 0, 0, 0];
             const i = extraCube[0];
@@ -532,7 +559,7 @@ export class Chunk {
             // this.cubeType[idx] = 0;
             const key = (this.topleftx + j) + "," + (this.toplefty + i);
             this.cubeMap[key].push(height);
-            this.indexMap[key][height] = idx;
+            this.indexMap[key][height] = idx + 4 * this.prio;
             this.cubeTypeMap[key][height] = extraCube[3];
         }
         // console.log(this.cubeType.toLocaleString());
@@ -570,7 +597,7 @@ export class Chunk {
         for (let i = 8; i < 72; i++) {
             for (let j = 8; j < 72; j++) {
                 
-                valueNoise[(i - 8)*64 + j - 8] =  Math.floor(0.5 *upsample3[i*80 + j] + 0.25 * upsample2[Math.trunc(i/2)*40 + Math.trunc(j/2)] + 0.125 * upsample1[Math.trunc(i/4)*20 + Math.trunc(j/4)] + 0.125 * this.superOGnoise[Math.trunc(i/8)*10 + Math.trunc(j/8)]);
+                valueNoise[(i - 8)*64 + j - 8] =  Math.floor(0.5 *upsample3[i*80 + j] + 0.25 * upsample2[Math.trunc(i/2)*40 + Math.trunc(j/2)] + 0.125 * upsample1[Math.trunc(i/4)*20 + Math.trunc(j/4)] + 0.125 * hNoise[Math.trunc(i/8)*10 + Math.trunc(j/8)]);
             
             }
         }
@@ -591,7 +618,7 @@ export class Chunk {
         for (let i = 8; i < 72; i++) {
             for (let j = 8; j < 72; j++) {
                 let index = this.xyToLine(j - 8, i - 8, 64);
-                finbiome[index] =  0.5 *upbiome3[i*80 + j] + 0.25 * upbiome2[Math.trunc(i/2)*40 + Math.trunc(j/2)] + 0.125 * upbiome[Math.trunc(i/4)*20 + Math.trunc(j/4)] + 0.125 * this.superBiomes[Math.trunc(i/8)*10 + Math.trunc(j/8)];
+                finbiome[index] =  0.5 *upbiome3[i*80 + j] + 0.25 * upbiome2[Math.trunc(i/2)*40 + Math.trunc(j/2)] + 0.125 * upbiome[Math.trunc(i/4)*20 + Math.trunc(j/4)] + 0.125 * bNoise[Math.trunc(i/8)*10 + Math.trunc(j/8)];
                 let val2 = rng.next();
                 if(finbiome[index] >  4.5) 
                 {
@@ -655,7 +682,7 @@ export class Chunk {
     public generateCubePositions() {
         this.cubePositionsF32 = new Float32Array(this.cubes * 4);
         let idx = 0;
-        this.indexMap = {};
+        // this.indexMap = {};
         for(let i=0; i<this.size*3; i++)
         {
             for(let j=0; j<this.size*3; j++)

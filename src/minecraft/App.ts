@@ -330,6 +330,7 @@ export class MinecraftAnimation extends CanvasAnimation {
   }
 
   private regenerate() {
+    console.log(`x ${this.loadedCX}, y ${this.loadedCY}`);
     this.schunk = new superChunk(this.loadedCX, this.loadedCY);
     const offset = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1], [1, -1], [1, 0], [1, 1]]
     for (let i = 0; i < offset.length; i++) {
@@ -339,8 +340,8 @@ export class MinecraftAnimation extends CanvasAnimation {
           const modificationKey = modificationCube[0] + "," + modificationCube[1] + "," + modificationCube[2];
           const modification = this.modifications[key][modificationKey];
           switch (modification) {
-            case "ADD": this.schunk.addCube(modificationCube[0], modificationCube[1], modificationCube[2]); break;
-            case "REMOVE": this.schunk.removeCube(modificationCube[0], modificationCube[1], modificationCube[2]); break;
+            // case "ADD": this.schunk.addCube(modificationCube[0], modificationCube[1], modificationCube[2]); break;
+            // case "REMOVE": this.schunk.removeCube(modificationCube[0], modificationCube[1], modificationCube[2]); break;
           }
         });
       }
@@ -444,148 +445,150 @@ export class MinecraftAnimation extends CanvasAnimation {
     return [intersectedCubeIndex, minT];
   }
 
-  public mine(rayDir: Vec3) {
-    const intersectedCubeIndex = this.intersectedCube(rayDir)[0];
-    if (!Number.isNaN(intersectedCubeIndex)) {
-      const x = this.schunk.cubePositions()[intersectedCubeIndex + 0];
-      const y = this.schunk.cubePositions()[intersectedCubeIndex + 1];
-      const z = this.schunk.cubePositions()[intersectedCubeIndex + 2];
-      const chunkCoords = this.getChunkCoords(x, z);
-      const chunkKey = chunkCoords[0] + "," + chunkCoords[1];
-      console.log("chunk coords " + chunkKey);
-      if (y > 0) {
-        const modificationKey = x + "," + y + "," + z;
-        if (isNullOrUndefined(this.modificationKeys[chunkKey])) {
-          this.modificationKeys[chunkKey] = [];
-        }
-        this.modificationKeys[chunkKey].push([x, y, z]);
-        if (isNullOrUndefined(this.modifications[chunkKey])) {
-          this.modifications[chunkKey] = {};
-        }
-        if (isNullOrUndefined(this.modifications[chunkKey][modificationKey])) {
-          this.modifications[chunkKey][modificationKey] = "REMOVE";
-        }
-        else {
-          this.modifications[chunkKey][modificationKey] = undefined;
-        }
-        // console.log("modificationKey " + modificationKey)
-        // console.log("set modification " + this.modifications[chunkKey][modificationKey])
-        this.schunk.removeCube(x, y, z);
-        const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        // console.log(y)
-        for (let i = 0; i < offset.length; i++) {
-          const neighborX = x + offset[i][0];
-          const neighborZ = z + offset[i][1];
-          const neighborKey = neighborX + "," + neighborZ;
-          const neighbors = this.schunk.cubeMap[neighborKey].sort();
-          const maxHeight = neighbors[neighbors.length - 1];
-          console.log(neighbors)
-          let removed = false;
-          const neighborChunkCoords = this.getChunkCoords(x, z);
-          const neighborChunkKey = neighborChunkCoords[0] + "," + neighborChunkCoords[1];
-        //   console.log("neighbor chunk coords " + neighborChunkKey);
-          const target = neighborX + "," + y + "," + neighborZ;
-          if (!isNullOrUndefined(this.modifications[neighborChunkKey])) {
-            console.log(this.modifications[neighborChunkKey][target]);
-            removed = this.modifications[neighborChunkKey][target] == "REMOVE";
-          }
-          console.log("maxHeight " + maxHeight);
-          console.log("removed " + removed);
-          if (maxHeight > y && !removed) {
-            console.log("add");
-            if (isNullOrUndefined(this.modificationKeys[neighborChunkKey])) {
-              this.modificationKeys[neighborChunkKey] = [];
-            }
-            this.modificationKeys[neighborChunkKey].push([neighborX, y, neighborZ]);
-            const modificationKey = neighborX + "," + y + "," + neighborZ;
-            this.modifications[neighborChunkKey][modificationKey] = "ADD";
-            this.schunk.addCube(neighborX, y, neighborZ);
-          }
-        }
-        const key = x + "," + z;
-        const newModificationKey = x + "," + (y - 1) + "," + z;
-        const removed = this.modifications[chunkKey][newModificationKey] == "REMOVE";
-        console.log("removed1 " + removed);
-        if (isNullOrUndefined(this.schunk.indexMap[key][y - 1]) && !removed) {
-          console.log("add");
-          this.modificationKeys[chunkKey].push([x, y-1, z]);
-          this.modifications[chunkKey][newModificationKey] = "ADD";
-          this.schunk.addCube(x, y - 1, z);
-        }
-        this.inventory++;
-        this.updateInventory();
-        this.schunk.generateCubePositions();
-      }
-    }
+  public mine(rayDir: Vec3){}
+  // public mine(rayDir: Vec3) {
+  //   const intersectedCubeIndex = this.intersectedCube(rayDir)[0];
+  //   if (!Number.isNaN(intersectedCubeIndex)) {
+  //     const x = this.schunk.cubePositions()[intersectedCubeIndex + 0];
+  //     const y = this.schunk.cubePositions()[intersectedCubeIndex + 1];
+  //     const z = this.schunk.cubePositions()[intersectedCubeIndex + 2];
+  //     const chunkCoords = this.getChunkCoords(x, z);
+  //     const chunkKey = chunkCoords[0] + "," + chunkCoords[1];
+  //     console.log("chunk coords " + chunkKey);
+  //     if (y > 0) {
+  //       const modificationKey = x + "," + y + "," + z;
+  //       if (isNullOrUndefined(this.modificationKeys[chunkKey])) {
+  //         this.modificationKeys[chunkKey] = [];
+  //       }
+  //       this.modificationKeys[chunkKey].push([x, y, z]);
+  //       if (isNullOrUndefined(this.modifications[chunkKey])) {
+  //         this.modifications[chunkKey] = {};
+  //       }
+  //       if (isNullOrUndefined(this.modifications[chunkKey][modificationKey])) {
+  //         this.modifications[chunkKey][modificationKey] = "REMOVE";
+  //       }
+  //       else {
+  //         this.modifications[chunkKey][modificationKey] = undefined;
+  //       }
+  //       // console.log("modificationKey " + modificationKey)
+  //       // console.log("set modification " + this.modifications[chunkKey][modificationKey])
+  //       this.schunk.removeCube(x, y, z);
+  //       const offset = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  //       // console.log(y)
+  //       for (let i = 0; i < offset.length; i++) {
+  //         const neighborX = x + offset[i][0];
+  //         const neighborZ = z + offset[i][1];
+  //         const neighborKey = neighborX + "," + neighborZ;
+  //         const neighbors = this.schunk.cubeMap[neighborKey].sort();
+  //         const maxHeight = neighbors[neighbors.length - 1];
+  //         console.log(neighbors)
+  //         let removed = false;
+  //         const neighborChunkCoords = this.getChunkCoords(x, z);
+  //         const neighborChunkKey = neighborChunkCoords[0] + "," + neighborChunkCoords[1];
+  //       //   console.log("neighbor chunk coords " + neighborChunkKey);
+  //         const target = neighborX + "," + y + "," + neighborZ;
+  //         if (!isNullOrUndefined(this.modifications[neighborChunkKey])) {
+  //           console.log(this.modifications[neighborChunkKey][target]);
+  //           removed = this.modifications[neighborChunkKey][target] == "REMOVE";
+  //         }
+  //         console.log("maxHeight " + maxHeight);
+  //         console.log("removed " + removed);
+  //         if (maxHeight > y && !removed) {
+  //           console.log("add");
+  //           if (isNullOrUndefined(this.modificationKeys[neighborChunkKey])) {
+  //             this.modificationKeys[neighborChunkKey] = [];
+  //           }
+  //           this.modificationKeys[neighborChunkKey].push([neighborX, y, neighborZ]);
+  //           const modificationKey = neighborX + "," + y + "," + neighborZ;
+  //           this.modifications[neighborChunkKey][modificationKey] = "ADD";
+  //           this.schunk.addCube(neighborX, y, neighborZ);
+  //         }
+  //       }
+  //       const key = x + "," + z;
+  //       const newModificationKey = x + "," + (y - 1) + "," + z;
+  //       const removed = this.modifications[chunkKey][newModificationKey] == "REMOVE";
+  //       console.log("removed1 " + removed);
+  //       if (isNullOrUndefined(this.schunk.indexMap[key][y - 1]) && !removed) {
+  //         console.log("add");
+  //         this.modificationKeys[chunkKey].push([x, y-1, z]);
+  //         this.modifications[chunkKey][newModificationKey] = "ADD";
+  //         this.schunk.addCube(x, y - 1, z);
+  //       }
+  //       this.inventory++;
+  //       this.updateInventory();
+  //       this.schunk.generateCubePositions();
+  //     }
+  //   }
     
-  }
+  // }
 
-  public placeBlock(rayDir: Vec3) {
-    if (this.inventory > 0) {
-      const cubeIntersection = this.intersectedCube(rayDir)
-      const intersectedCubeIndex = cubeIntersection[0];
-      if (!Number.isNaN(intersectedCubeIndex)) {
-        const x = this.schunk.cubePositions()[intersectedCubeIndex + 0];
-        const y = this.schunk.cubePositions()[intersectedCubeIndex + 1];
-        const z = this.schunk.cubePositions()[intersectedCubeIndex + 2];
-        const minT = cubeIntersection[1];
-        const intersectionPoint = this.playerPosition.copy().add(rayDir.copy().scale(minT));
-        let offset: [number, number, number] = [0, 0, 0];
-        if (Math.abs(intersectionPoint.x - (x - 0.5)) < 1e-7) {
-          offset = [-1, 0, 0];
-        }
-        else if (Math.abs(intersectionPoint.x - (x + 0.5)) < 1e-7) {
-          offset = [1, 0, 0];
-        }
-        else if (Math.abs(intersectionPoint.y - (y - 0.5)) < 1e-7) {
-          offset = [0, -1, 0];
-        }
-        else if (Math.abs(intersectionPoint.y - (y + 0.5)) < 1e-7) {
-          offset = [0, 1, 0];
-        }
-        else if (Math.abs(intersectionPoint.z - (z - 0.5)) < 1e-7) {
-          offset = [0, 0, -1];
-        }
-        else if (Math.abs(intersectionPoint.z - (z + 0.5)) < 1e-7) {
-          offset = [0, 0, 1];
-        }
-        const newX = x + offset[0];
-        const newY = y + offset[1];
-        const newZ = z + offset[2];
-        const chunkCoords = this.getChunkCoords(newX, newZ);
-        const key = chunkCoords[0] + "," + chunkCoords[1];
-        if (Math.sqrt(Math.pow(intersectionPoint.x - this.playerPosition.x, 2) + Math.pow(intersectionPoint.z - this.playerPosition.z, 2)) >= 0.4) {
-          if (this.on(newX, newZ)) {
-            if (this.playerPosition.y > newY - 0.5) {
-              return;
-            }
-            if (this.playerPosition.y - 2 < newY + 0.5) {
-              this.playerPosition.y++;
-            }
-          }
-          const modificationKey = newX + "," + newY + "," + newZ;
-          if (isNullOrUndefined(this.modificationKeys[key])) {
-            this.modificationKeys[key] = [];
-          }
-          this.modificationKeys[key].push([x, y, z]);
-          if (isNullOrUndefined(this.modifications[key])) {
-            this.modifications[key] = {};
-          }
-          if (isNullOrUndefined(this.modifications[key][modificationKey])) {
-            this.modifications[key][modificationKey] = "ADD";
-          }
-          else {
-            this.modifications[key][modificationKey] = undefined;
-          }
-          this.schunk.addCube(newX, newY, newZ);
-          this.inventory--;
-          this.updateInventory();
-          this.schunk.generateCubePositions();
-        }
+  public placeBlock(rayDri:Vec3){}
+  // public placeBlock(rayDir: Vec3) {
+  //   if (this.inventory > 0) {
+  //     const cubeIntersection = this.intersectedCube(rayDir)
+  //     const intersectedCubeIndex = cubeIntersection[0];
+  //     if (!Number.isNaN(intersectedCubeIndex)) {
+  //       const x = this.schunk.cubePositions()[intersectedCubeIndex + 0];
+  //       const y = this.schunk.cubePositions()[intersectedCubeIndex + 1];
+  //       const z = this.schunk.cubePositions()[intersectedCubeIndex + 2];
+  //       const minT = cubeIntersection[1];
+  //       const intersectionPoint = this.playerPosition.copy().add(rayDir.copy().scale(minT));
+  //       let offset: [number, number, number] = [0, 0, 0];
+  //       if (Math.abs(intersectionPoint.x - (x - 0.5)) < 1e-7) {
+  //         offset = [-1, 0, 0];
+  //       }
+  //       else if (Math.abs(intersectionPoint.x - (x + 0.5)) < 1e-7) {
+  //         offset = [1, 0, 0];
+  //       }
+  //       else if (Math.abs(intersectionPoint.y - (y - 0.5)) < 1e-7) {
+  //         offset = [0, -1, 0];
+  //       }
+  //       else if (Math.abs(intersectionPoint.y - (y + 0.5)) < 1e-7) {
+  //         offset = [0, 1, 0];
+  //       }
+  //       else if (Math.abs(intersectionPoint.z - (z - 0.5)) < 1e-7) {
+  //         offset = [0, 0, -1];
+  //       }
+  //       else if (Math.abs(intersectionPoint.z - (z + 0.5)) < 1e-7) {
+  //         offset = [0, 0, 1];
+  //       }
+  //       const newX = x + offset[0];
+  //       const newY = y + offset[1];
+  //       const newZ = z + offset[2];
+  //       const chunkCoords = this.getChunkCoords(newX, newZ);
+  //       const key = chunkCoords[0] + "," + chunkCoords[1];
+  //       if (Math.sqrt(Math.pow(intersectionPoint.x - this.playerPosition.x, 2) + Math.pow(intersectionPoint.z - this.playerPosition.z, 2)) >= 0.4) {
+  //         if (this.on(newX, newZ)) {
+  //           if (this.playerPosition.y > newY - 0.5) {
+  //             return;
+  //           }
+  //           if (this.playerPosition.y - 2 < newY + 0.5) {
+  //             this.playerPosition.y++;
+  //           }
+  //         }
+  //         const modificationKey = newX + "," + newY + "," + newZ;
+  //         if (isNullOrUndefined(this.modificationKeys[key])) {
+  //           this.modificationKeys[key] = [];
+  //         }
+  //         this.modificationKeys[key].push([x, y, z]);
+  //         if (isNullOrUndefined(this.modifications[key])) {
+  //           this.modifications[key] = {};
+  //         }
+  //         if (isNullOrUndefined(this.modifications[key][modificationKey])) {
+  //           this.modifications[key][modificationKey] = "ADD";
+  //         }
+  //         else {
+  //           this.modifications[key][modificationKey] = undefined;
+  //         }
+  //         this.schunk.addCube(newX, newY, newZ);
+  //         this.inventory--;
+  //         this.updateInventory();
+  //         this.schunk.generateCubePositions();
+  //       }
 
-      }
-    }
-  }
+  //     }
+  //   }
+  // }
   
   public jump() {
     //TODO: If the player is not already in the lair, launch them upwards at 10 units/sec.
